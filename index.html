@@ -1,137 +1,278 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mars, Future, AI</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mars Future AI</title>
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #1a0505; font-family: 'Orbitron', sans-serif; color: white; }
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-        /* 배경: 화성 지표면 무한 스크롤 */
-        #game-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 200%;
-            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
-                        url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000');
-            background-size: cover; z-index: -2;
-        }
+<style>
+html,body{
+margin:0;width:100%;height:100%;overflow:hidden;
+background:#1a0505;color:white;font-family:'Orbitron',sans-serif;
+}
 
-        .sandstorm {
-            position: absolute; top: 0; left: 0; width: 200%; height: 100%;
-            background: url('https://www.transparenttextures.com/patterns/dust.png');
-            opacity: 0.3; animation: drift 8s linear infinite; z-index: -1; pointer-events: none;
-        }
-        @keyframes drift { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+#bg{
+position:fixed;inset:0;height:200%;
+background:
+linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,.3)),
+url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000');
+background-size:cover;z-index:-2;
+}
 
-        /* UI 레이어 */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        h1 { color: #ff4d4d; font-size: clamp(2rem, 8vw, 4.5rem); text-shadow: 0 0 25px #ff0000; margin: 0; text-align: center; }
+#ui{
+position:fixed;inset:0;display:flex;
+flex-direction:column;justify-content:center;align-items:center;
+}
 
-        .btn-mars {
-            background: #ff4d4d; color: black; border: none; padding: 15px 35px; cursor: pointer;
-            font-family: 'Orbitron', sans-serif; font-weight: bold; margin-top: 30px; transition: 0.2s;
-        }
-        .btn-mars:hover { animation: blink 0.1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+h1{
+color:#ff4d4d;
+font-size:clamp(2rem,8vw,4.5rem);
+text-shadow:0 0 25px #ff0000;
+}
 
-        #start-btn {
-            font-family: 'Press Start 2P', cursive; background: #ff0000; color: white;
-            padding: 25px 50px; border: 4px solid #fff; image-rendering: pixelated; display: none;
-        }
+button{
+margin-top:30px;padding:15px 40px;
+background:#ff4d4d;border:none;
+font-weight:bold;cursor:pointer;
+}
 
-        /* HUD 및 캔버스 */
-        #game-canvas { display: none; position: fixed; top: 0; left: 0; z-index: 10; cursor: none; }
-        #hud { position: fixed; top: 25px; left: 25px; z-index: 1000; color: #ff4d4d; font-size: 1.2rem; display: none; text-shadow: 2px 2px 0px #000; }
-        #bgm-ctrl { position: fixed; top: 20px; right: 20px; z-index: 1000; background: rgba(255,0,0,0.2); border: 1px solid #ff4d4d; color: #ff4d4d; padding: 10px 15px; cursor: pointer; }
-    </style>
+#hud{
+position:fixed;top:15px;left:15px;
+color:#ff4d4d;text-shadow:2px 2px 0 #000;
+display:none;
+}
+
+#flash{
+position:fixed;inset:0;
+background:red;opacity:0;pointer-events:none;
+}
+
+canvas{position:fixed;inset:0;display:none;}
+</style>
 </head>
+
 <body>
 
-    <div id="game-bg"></div>
-    <div class="sandstorm"></div>
-    <button id="bgm-ctrl" onclick="toggleBGM()">BGM: OFF</button>
+<div id="bg"></div>
+<div id="flash"></div>
 
-    <div id="hud">SCORE: <span id="score-val">0</span> | HP: <span id="hp-val">100</span>%</div>
+<div id="hud">
+SCORE: <span id="score">0</span> |
+HP: <span id="hp">100</span>%
+</div>
 
-    <div id="ui-layer">
-        <h1 id="main-title">MARS<br>FUTURE<br>AI</h1>
-        <div id="auth-box">
-            <button class="btn-mars" id="login-btn">SIGN IN WITH GOOGLE</button>
-        </div>
-        <button class="btn-mars" id="start-btn">GAME START</button>
-    </div>
+<div id="ui">
+<h1>MARS<br>FUTURE<br>AI</h1>
+<button id="start">START</button>
+</div>
 
-    <canvas id="game-canvas"></canvas>
+<canvas id="game"></canvas>
 
-    <audio id="click-sound" src="https://actions.google.com/sounds/v1/science_fiction/typing_interface.ogg"></audio>
-    <audio id="bgm" src="./화성.mp3" loop></audio>
+<!-- SFX -->
+<audio id="s-shot" src="shot.wav"></audio>
+<audio id="s-hit" src="hit.wav"></audio>
+<audio id="s-explode" src="explode.wav"></audio>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const flash = document.getElementById('flash');
 
-        // 유저님께서 제공해주신 Firebase 설정값 적용
-        const firebaseConfig = {
-            apiKey: "AIzaSyDSgG2ZWSklzTcZZZjd1cs0q3wYKrMPkZs",
-            authDomain: "mars-future-ai.firebaseapp.com",
-            projectId: "mars-future-ai",
-            storageBucket: "mars-future-ai.firebasestorage.app",
-            messagingSenderId: "836937842227",
-            appId: "1:836937842227:web:6c0bfbb45a3a6dbf206d46",
-            measurementId: "G-EYVBGG7XQ0"
-        };
+const ship = new Image(); ship.src='https://i.imgur.com/vD96S9t.png';
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth();
-        const provider = new GoogleAuthProvider();
+let player = { x:innerWidth/2, y:innerHeight/2 };
+let bullets=[], enemies=[], explosions=[];
+let boss=null;
 
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        const bgm = document.getElementById('bgm');
-        const clickSnd = document.getElementById('click-sound');
+let score=0, hp=100;
+let active=false, last=0, shootCD=0;
+let shake=0, bgY=0;
 
-        // 이미지 로딩
-        const shipImg = new Image(); shipImg.src = 'https://i.imgur.com/vD96S9t.png';
-        const enemyImg = new Image(); enemyImg.src = 'https://i.imgur.com/S8Wv6pC.png';
+function resize(){
+canvas.width=innerWidth;
+canvas.height=innerHeight;
+}
+window.addEventListener('resize',resize);
 
-        let score = 0;
-        let hp = 100;
-        let gameActive = false;
-        let player = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-        let bullets = [];
-        let enemies = [];
-        let bgOffset = 0;
+function play(id){
+const s=document.getElementById(id);
+s.currentTime=0; s.play();
+}
 
-        window.toggleBGM = () => {
-            if (bgm.paused) { bgm.play(); document.getElementById('bgm-ctrl').innerText = "BGM: ON"; }
-            else { bgm.pause(); document.getElementById('bgm-ctrl').innerText = "BGM: OFF"; }
-        };
+/* ===== ENEMY PATTERNS ===== */
+const ENEMY_TYPES={
+straight:{
+speed:()=>4,
+move:e=>{e.y+=e.s;}
+},
+zigzag:{
+speed:()=>3,
+move:e=>{
+e.y+=e.s;
+e.x+=Math.sin(e.y*0.05)*3;
+}
+},
+sniper:{
+speed:()=>2,
+move:e=>{
+e.y+=e.s;
+if(!e.lock && e.y>150){
+e.tx=player.x; e.lock=true;
+}
+if(e.lock) e.x+=(e.tx-e.x)*0.03;
+}
+}
+};
 
-        // 로그인
-        document.getElementById('login-btn').onclick = async () => {
-            clickSnd.play();
-            try {
-                await signInWithPopup(auth, provider);
-                document.getElementById('auth-box').style.display = 'none';
-                document.getElementById('start-btn').style.display = 'block';
-                bgm.play();
-            } catch (e) { alert("로그인 실패! Firebase 도메인 설정을 확인하세요."); }
-        };
+/* ===== INPUT ===== */
+addEventListener('mousemove',e=>{
+player.x=e.clientX; player.y=e.clientY;
+});
+addEventListener('touchmove',e=>{
+player.x=e.touches[0].clientX;
+player.y=e.touches[0].clientY;
+e.preventDefault();
+},{passive:false});
 
-        // 게임 시작
-        document.getElementById('start-btn').onclick = () => {
-            clickSnd.play();
-            document.getElementById('ui-layer').style.display = 'none';
-            document.getElementById('hud').style.display = 'block';
-            canvas.style.display = 'block';
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            gameActive = true;
-            requestAnimationFrame(gameLoop);
-        };
+/* ===== START ===== */
+document.getElementById('start').onclick=()=>{
+document.getElementById('ui').style.display='none';
+document.getElementById('hud').style.display='block';
+canvas.style.display='block';
+resize(); active=true;
+requestAnimationFrame(loop);
+};
 
-        window.addEventListener('mousemove', (e) => { player.x = e.clientX; player.y = e.clientY; });
+/* ===== LOOP ===== */
+function loop(t){
+if(!active)return;
+const d=t-last; last=t;
 
-        setInterval(() =>
+bgY+=1.5;
+document.getElementById('bg').style.backgroundPosition=`0 ${bgY}px`;
+
+ctx.setTransform(1,0,0,1,(Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+ctx.clearRect(0,0,canvas.width,canvas.height);
+shake*=0.9;
+
+/* difficulty */
+const difficulty=1+score/2000;
+
+/* shooting */
+shootCD-=d;
+if(shootCD<=0){
+bullets.push({x:player.x,y:player.y-20});
+play('s-shot');
+shootCD=140;
+}
+
+bullets=bullets.filter(b=>{
+b.y-=14;
+ctx.fillStyle='#0ff';
+ctx.fillRect(b.x-2,b.y,4,16);
+return b.y>-40;
+});
+
+/* enemies */
+if(Math.random()<0.02*difficulty && enemies.length<30){
+const keys=Object.keys(ENEMY_TYPES);
+const type=keys[Math.floor(Math.random()*keys.length)];
+enemies.push({
+x:Math.random()*canvas.width,
+y:-40,type,
+s:ENEMY_TYPES[type].speed()*difficulty
+});
+}
+
+enemies=enemies.filter(e=>{
+ENEMY_TYPES[e.type].move(e);
+ctx.fillStyle='#f55';
+ctx.fillRect(e.x-20,e.y-20,40,40);
+
+for(let i=bullets.length-1;i>=0;i--){
+if(Math.hypot(bullets[i].x-e.x,bullets[i].y-e.y)<25){
+bullets.splice(i,1);
+score+=100;
+document.getElementById('score').innerText=score;
+explosions.push({x:e.x,y:e.y,r:0});
+play('s-hit');
+return false;
+}
+}
+
+if(Math.hypot(player.x-e.x,player.y-e.y)<35){
+hp-=20;
+document.getElementById('hp').innerText=hp;
+shake=15; flash.style.opacity=0.4;
+setTimeout(()=>flash.style.opacity=0,100);
+if(hp<=0) return gameOver();
+return false;
+}
+
+return e.y<canvas.height+50;
+});
+
+/* boss */
+if(score>3000 && !boss){
+boss={x:canvas.width/2,y:-150,hp:600,t:0};
+}
+
+if(boss){
+boss.t++;
+if(boss.y<120) boss.y+=2;
+boss.x+=Math.sin(boss.t*0.02)*3;
+
+if(boss.t%50===0){
+enemies.push({x:boss.x,y:boss.y+40,type:'straight',s:6});
+}
+
+ctx.fillStyle='#ff2222';
+ctx.fillRect(boss.x-80,boss.y-50,160,100);
+
+ctx.fillStyle='#000';
+ctx.fillRect(boss.x-80,boss.y-65,160,10);
+ctx.fillStyle='#0f0';
+ctx.fillRect(boss.x-80,boss.y-65,160*(boss.hp/600),10);
+
+for(let i=bullets.length-1;i>=0;i--){
+if(Math.hypot(bullets[i].x-boss.x,bullets[i].y-boss.y)<90){
+bullets.splice(i,1);
+boss.hp-=10;
+play('s-hit');
+if(boss.hp<=0){
+explosions.push({x:boss.x,y:boss.y,r:0});
+play('s-explode');
+boss=null;
+}
+}
+}
+}
+
+/* explosions */
+explosions=explosions.filter(ex=>{
+ex.r+=4;
+ctx.strokeStyle=`rgba(255,180,0,${1-ex.r/30})`;
+ctx.beginPath();
+ctx.arc(ex.x,ex.y,ex.r,0,Math.PI*2);
+ctx.stroke();
+return ex.r<30;
+});
+
+ctx.drawImage(ship,player.x-25,player.y-25,50,50);
+requestAnimationFrame(loop);
+}
+
+/* GAME OVER */
+function gameOver(){
+active=false;
+alert(`MISSION FAILED\nSCORE: ${score}`);
+location.reload();
+}
+</script>
+</body>
+</html>
