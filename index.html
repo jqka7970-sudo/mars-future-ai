@@ -1,25 +1,213 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="google" content="notranslate">
-  <title>MARS FUTURE AI</title>
+    <meta charset="UTF-8">
+    <title>Mars, Future, AI</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
 
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #200;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* 배경 화성 및 모래바람 연출 */
+        #bg-container {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000') no-repeat center center/cover;
+            z-index: -2;
+        }
+
+        .sandstorm {
+            position: absolute;
+            top: 0; left: 0; width: 200%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/dust.png');
+            opacity: 0.3;
+            animation: drift 10s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes drift {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        /* 제목 설정 */
+        header {
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            color: #ff4d4d;
+            font-size: 4rem;
+            text-shadow: 0 0 20px #ff0000;
+            margin: 0;
+        }
+
+        /* 로그인 섹션 */
+        #login-box {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border: 2px solid #ff4d4d;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 77, 77, 0.4);
+        }
+
+        input {
+            display: block;
+            width: 250px;
+            padding: 12px;
+            margin: 15px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #ff4d4d;
+            color: white;
+            outline: none;
+        }
+
+        /* 버튼 공통 스타일 및 깜빡임 효과 */
+        .btn {
+            background: #ff4d4d;
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            animation: blink 0.2s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        /* 게임 시작 버튼 (픽셀 스타일) */
+        #game-start-container {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #game-start-btn {
+            font-size: 2.5rem;
+            padding: 20px 50px;
+            border: 4px solid #000;
+            box-shadow: 5px 5px 0px #550000;
+            background: #ff0000;
+            color: white;
+            image-rendering: pixelated;
+        }
+
+        /* 게임 캔버스 */
+        #game-canvas {
+            display: none;
+            cursor: crosshair;
+            background: #1a0a0a;
+        }
+    </style>
 </head>
 <body>
 
-  <header class="top-title">
-    MARS <span>·</span> FUTURE <span>·</span> AI
-  </header>
+    <div id="bg-container"></div>
+    <div class="sandstorm"></div>
 
-  <main class="center">
-    <div class="welcome">WELCOME</div>
-    <div id="startBtn" class="start">GAME START</div>
-  </main>
+    <header id="main-header">
+        <h1>Mars, Future, AI</h1>
+    </header>
 
-  <script src="script.js"></script>
+    <div id="login-box">
+        <input type="text" placeholder="Google Account ID" id="user-id">
+        <input type="password" placeholder="Password">
+        <button class="btn" onclick="playClickSound(); handleLogin()">LOGIN</button>
+    </div>
+
+    <div id="game-start-container">
+        <button id="game-start-btn" class="btn" onclick="playClickSound(); startGame()">GAME START</button>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <audio id="click-sound" src="https://actions.google.com/sounds/v1/science_fiction/typing_interface.ogg"></audio>
+
+    <script>
+        const clickSound = document.getElementById('click-sound');
+
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play();
+        }
+
+        function handleLogin() {
+            const loginBox = document.getElementById('login-box');
+            const startContainer = document.getElementById('game-start-container');
+            
+            loginBox.style.display = 'none';
+            startContainer.style.display = 'block';
+        }
+
+        // 게임 관련 로직
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function startGame() {
+            document.getElementById('game-start-container').style.display = 'none';
+            document.getElementById('main-header').style.display = 'none';
+            canvas.style.display = 'block';
+            
+            resizeCanvas();
+            animate();
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // 간단한 탑다운 뷰 타워 디펜스 배경 렌더링 (RTD 스타일 그리드)
+        function animate() {
+            ctx.fillStyle = "#1a0a0a"; // 화성 바닥톤
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 그리드 그리기
+            ctx.strokeStyle = "rgba(255, 77, 77, 0.1)";
+            ctx.lineWidth = 1;
+            const size = 50;
+            for(let x = 0; x < canvas.width; x += size) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y = 0; y < canvas.height; y += size) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // 플레이어 마우스 위치에 타워 가이드라인 (예시)
+            ctx.fillStyle = "rgba(255, 255, 0, 0.2)";
+            ctx.font = "20px Orbitron";
+            ctx.fillText("MARS RTD SYSTEM ONLINE - TOP DOWN VIEW", 50, 50);
+
+            requestAnimationFrame(animate);
+        }
+    </script>
 </body>
 </html>
-
