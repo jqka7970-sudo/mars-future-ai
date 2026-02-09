@@ -2,79 +2,31 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mars, Future, AI</title>
+    <title>Mars Future AI - RTD</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #1a0505;
-            font-family: 'Orbitron', sans-serif; color: white;
-        }
-
-        /* 화성 배경 및 모래바람 */
-        #bg-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
-                        url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000') center/cover;
-            z-index: -2;
-        }
-
-        .sandstorm {
-            position: absolute; top: 0; left: 0; width: 200%; height: 100%;
-            background: url('https://www.transparenttextures.com/patterns/dust.png');
-            opacity: 0.25; animation: drift 12s linear infinite;
-            z-index: -1; pointer-events: none;
-        }
-
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Press+Start+2P&display=swap');
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; }
+        
+        /* 배경 연출 */
+        #bg-container { position: fixed; width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000') center/cover; z-index: -2; }
+        .sandstorm { position: absolute; width: 200%; height: 100%; background: url('https://www.transparenttextures.com/patterns/dust.png'); opacity: 0.3; animation: drift 15s linear infinite; z-index: -1; pointer-events: none; }
         @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-        /* BGM 컨트롤 */
-        #bgm-ctrl {
-            position: fixed; top: 20px; right: 20px; z-index: 1000;
-            background: rgba(255, 0, 0, 0.1); border: 1px solid #ff4d4d;
-            color: #ff4d4d; padding: 8px 16px; cursor: pointer; font-size: 0.7rem;
-        }
-        #bgm-ctrl:hover { background: #ff4d4d; color: #000; }
-
-        /* 제목 */
-        header { text-align: center; margin-top: 12vh; transition: opacity 0.5s; }
-        h1 { color: #ff4d4d; font-size: clamp(2rem, 10vw, 4.5rem); text-shadow: 0 0 20px #ff0000; }
-
-        /* 메인 인터페이스 */
-        .ui-wrapper {
-            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; width: 100%;
-        }
-
-        .btn-mars {
-            background: #ff4d4d; color: black; border: none;
-            padding: 15px 35px; cursor: pointer; font-weight: bold;
-            font-family: 'Orbitron', sans-serif;
-        }
+        /* UI 스타일 */
+        header { text-align: center; padding-top: 50px; color: #ff4d4d; }
+        .ui-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .btn-mars { background: #ff4d4d; color: black; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; font-family: 'Orbitron'; transition: 0.2s; }
         .btn-mars:hover { animation: blink 0.1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
+        
+        #login-box { background: rgba(0,0,0,0.8); padding: 40px; border: 2px solid #ff4d4d; }
+        #game-start-container { display: none; }
+        .pixel-btn { font-family: 'Press Start 2P'; background: #f00; color: #fff; padding: 25px; border: 4px solid #fff; }
 
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-
-        #login-box {
-            background: rgba(0, 0, 0, 0.85); padding: 50px;
-            border: 2px solid #ff4d4d; display: inline-block;
-            box-shadow: 0 0 40px rgba(255, 0, 0, 0.3);
-        }
-
-        /* 게임 시작 버튼 (픽셀 애니메이션) */
-        #game-start-section { display: none; }
-        .pixel-btn {
-            font-family: 'Press Start 2P', cursive;
-            background: #ff0000; color: white; padding: 30px 60px;
-            border: 4px solid #fff; image-rendering: pixelated;
-            box-shadow: 8px 8px 0px #550000;
-        }
-
-        /* 게임 캔버스 */
-        #game-canvas { display: none; background: #0c0808; cursor: crosshair; }
+        /* 게임 내부 UI */
+        #game-ui { display: none; position: fixed; top: 20px; left: 20px; color: #ff4d4d; z-index: 10; font-size: 1.2rem; pointer-events: none; }
+        #build-btn { display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; padding: 20px 40px; font-size: 1.5rem; }
+        #game-canvas { display: none; background: #0a0505; }
     </style>
 </head>
 <body>
@@ -82,34 +34,31 @@
     <div id="bg-container"></div>
     <div class="sandstorm"></div>
 
-    <button id="bgm-ctrl">BGM: OFF</button>
+    <header id="main-header"><h1>MARS, FUTURE, AI</h1></header>
 
-    <header id="ui-header">
-        <h1>MARS, FUTURE, AI</h1>
-    </header>
-
-    <div class="ui-wrapper">
+    <div class="ui-center">
         <div id="login-box">
-            <p style="color: #ffaaaa; margin-bottom: 25px; font-size: 0.8rem;">SECURE CONNECTION REQUIRED</p>
             <button class="btn-mars" id="google-login">SIGN IN WITH GOOGLE</button>
         </div>
-
-        <div id="game-start-section">
+        <div id="game-start-container">
             <button class="pixel-btn btn-mars" id="start-btn">GAME START</button>
-            <p id="user-display" style="margin-top: 25px; color: #ff4d4d;"></p>
         </div>
     </div>
 
+    <div id="game-ui">
+        GOLD: <span id="gold-val">100</span> | LIFE: <span id="life-val">20</span> | WAVE: <span id="wave-val">1</span>
+    </div>
+    <button id="build-btn" class="btn-mars">RANDOM SUMMON (10G)</button>
+
     <canvas id="game-canvas"></canvas>
 
-    <audio id="click-sound" src="https://actions.google.com/sounds/v1/science_fiction/typing_interface.ogg"></audio>
     <audio id="bgm" src="./화성.mp3" loop></audio>
+    <audio id="click-sound" src="https://actions.google.com/sounds/v1/science_fiction/typing_interface.ogg"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // 사용자가 제공한 Firebase 설정값 적용
         const firebaseConfig = {
             apiKey: "AIzaSyDSgG2ZWSklzTcZZZjd1cs0q3wYKrMPkZs",
             authDomain: "mars-future-ai.firebaseapp.com",
@@ -125,81 +74,132 @@
         const provider = new GoogleAuthProvider();
 
         const bgm = document.getElementById('bgm');
-        const bgmBtn = document.getElementById('bgm-ctrl');
-        const clickSound = document.getElementById('click-sound');
+        const clickSnd = document.getElementById('click-sound');
 
-        // 사운드 제어
-        const playClick = () => { clickSound.currentTime = 0; clickSound.play(); };
-        
-        bgmBtn.onclick = () => {
-            if (bgm.paused) {
-                bgm.play();
-                bgmBtn.innerText = "BGM: ON";
-                bgmBtn.style.color = "#00ff00";
-            } else {
-                bgm.pause();
-                bgmBtn.innerText = "BGM: OFF";
-                bgmBtn.style.color = "#ff4d4d";
-            }
-        };
-
-        // 로그인 로직
+        // --- 로그인 및 브금 해결 ---
         document.getElementById('google-login').onclick = async () => {
-            playClick();
+            clickSnd.play();
             try {
-                const result = await signInWithPopup(auth, provider);
+                await signInWithPopup(auth, provider);
                 document.getElementById('login-box').style.display = 'none';
-                document.getElementById('game-start-section').style.display = 'block';
-                document.getElementById('user-display').innerText = `WELCOME, COMMANDER ${result.user.displayName.toUpperCase()}`;
-                
-                // 로그인 후 BGM 자동 재생 시도
-                bgm.play().then(() => {
-                    bgmBtn.innerText = "BGM: ON";
-                    bgmBtn.style.color = "#00ff00";
-                }).catch(() => {});
-            } catch (error) {
-                console.error(error);
-                alert("로그인 실패: Firebase 콘솔에서 Google 로그인이 활성화되었는지 확인하세요.");
-            }
+                document.getElementById('game-start-container').style.display = 'block';
+                // 브라우저 정책 해결: 클릭 시 브금 재생 시작
+                bgm.play().catch(e => console.log("BGM 대기 중..."));
+            } catch (e) { alert("로그인 실패"); }
         };
 
-        // 게임 시작 로직
+        // --- 게임 엔진 변수 ---
+        let gold = 100, life = 20, wave = 1;
+        let towers = [], enemies = [], projectiles = [];
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const path = [{x: -50, y: 200}, {x: 800, y: 200}, {x: 800, y: 600}, {x: 100, y: 600}, {x: 100, y: 350}, {x: 1200, y: 350}];
+        
+        const towerTypes = [
+            { name: "Marine", color: "#00f", range: 150, damage: 10, speed: 500 },
+            { name: "Firebat", color: "#f80", range: 100, damage: 25, speed: 800 },
+            { name: "Ghost", color: "#fff", range: 250, damage: 45, speed: 1200 }
+        ];
+
         document.getElementById('start-btn').onclick = () => {
-            playClick();
-            document.getElementById('ui-header').style.opacity = '0';
-            document.getElementById('game-start-section').style.display = 'none';
-            const canvas = document.getElementById('game-canvas');
+            clickSnd.play();
+            bgm.play(); // 혹시 안나올 경우 대비 재실행
+            document.getElementById('game-start-container').style.display = 'none';
+            document.getElementById('main-header').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'block';
+            document.getElementById('build-btn').style.display = 'block';
             canvas.style.display = 'block';
-            startRTD(canvas);
+            resize();
+            spawnWave();
+            animate();
         };
 
-        function startRTD(canvas) {
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            function render() {
-                ctx.fillStyle = '#0c0808';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // RTD 탑다운 그리드
-                ctx.strokeStyle = '#2a1010';
-                const cellSize = 60;
-                for(let x=0; x<canvas.width; x+=cellSize) {
-                    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-                }
-                for(let y=0; y<canvas.height; y+=cellSize) {
-                    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-                }
-
-                ctx.fillStyle = '#ff4d4d';
-                ctx.font = '16px Orbitron';
-                ctx.fillText("MARS RTD SYSTEM: ONLINE", 40, 50);
-                ctx.fillText("STATUS: SCANNING FOR HOSTILES...", 40, 80);
-
-                requestAnimationFrame(render);
+        // --- 게임 로직 클래스 ---
+        class Enemy {
+            constructor() {
+                this.x = path[0].x; this.y = path[0].y;
+                this.pathIdx = 0; this.hp = 50 + (wave * 30);
+                this.maxHp = this.hp; this.speed = 2 + (wave * 0.2);
             }
-            render();
+            update() {
+                let target = path[this.pathIdx + 1];
+                if (!target) return false;
+                let dx = target.x - this.x, dy = target.y - this.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 5) this.pathIdx++;
+                else { this.x += (dx/dist)*this.speed; this.y += (dy/dist)*this.speed; }
+                if (this.pathIdx >= path.length - 1) { life--; return false; }
+                return true;
+            }
+            draw() {
+                ctx.fillStyle = "#f00"; ctx.beginPath(); ctx.arc(this.x, this.y, 15, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#0f0"; ctx.fillRect(this.x-15, this.y-25, 30 * (this.hp/this.maxHp), 5);
+            }
+        }
+
+        class Tower {
+            constructor(x, y, type) { this.x = x; this.y = y; this.type = type; this.lastShot = 0; }
+            draw() {
+                ctx.fillStyle = this.type.color; ctx.fillRect(this.x-20, this.y-20, 40, 40);
+                ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.beginPath(); ctx.arc(this.x, this.y, this.type.range, 0, Math.PI*2); ctx.stroke();
+            }
+            shoot(time) {
+                if (time - this.lastShot > this.type.speed) {
+                    let target = enemies.find(e => Math.sqrt((this.x-e.x)**2 + (this.y-e.y)**2) < this.type.range);
+                    if (target) {
+                        projectiles.push({x: this.x, y: this.y, target: target, damage: this.type.damage});
+                        this.lastShot = time;
+                    }
+                }
+            }
+        }
+
+        function spawnWave() {
+            for(let i=0; i<10; i++) setTimeout(() => enemies.push(new Enemy()), i * 800);
+            setTimeout(() => { wave++; spawnWave(); }, 15000);
+        }
+
+        document.getElementById('build-btn').onclick = () => {
+            if (gold >= 10) {
+                gold -= 10;
+                let type = towerTypes[Math.floor(Math.random()*towerTypes.length)];
+                towers.push(new Tower(Math.random()*(canvas.width-200)+100, Math.random()*(canvas.height-200)+100, type));
+                clickSnd.play();
+            }
+        };
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize;
+
+        function animate(time) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 그리드 배경
+            ctx.strokeStyle = "#221111";
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+
+            enemies = enemies.filter(e => {
+                if (e.hp <= 0) { gold += 5; return false; }
+                let alive = e.update(); e.draw(); return alive;
+            });
+
+            towers.forEach(t => { t.shoot(time); t.draw(); });
+
+            projectiles = projectiles.filter(p => {
+                let dx = p.target.x - p.x, dy = p.target.y - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 10) { p.target.hp -= p.damage; return false; }
+                p.x += (dx/dist)*10; p.y += (dy/dist)*10;
+                ctx.fillStyle = "yellow"; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+                return true;
+            });
+
+            document.getElementById('gold-val').innerText = gold;
+            document.getElementById('life-val').innerText = life;
+            document.getElementById('wave-val').innerText = wave;
+
+            if (life <= 0) { alert("MISSION FAILED"); location.reload(); }
+            else requestAnimationFrame(animate);
         }
     </script>
 </body>
