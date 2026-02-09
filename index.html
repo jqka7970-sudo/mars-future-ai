@@ -9,75 +9,54 @@
 
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #1a0505; font-family: 'Orbitron', sans-serif; color: white; }
 
-        /* 배경: 화성 지표면 이미지 (무한 스크롤) */
+        /* 배경: 화성 이미지 무한 스크롤 */
         #game-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 200%;
             background: url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&q=80&w=2000');
             background-size: cover; z-index: -2; opacity: 0.6;
         }
 
-        .sandstorm {
-            position: absolute; top: 0; left: 0; width: 200%; height: 100%;
-            background: url('https://www.transparenttextures.com/patterns/dust.png');
-            opacity: 0.3; animation: drift 10s linear infinite; z-index: -1; pointer-events: none;
-        }
-        @keyframes drift { from { transform: translateY(0); } to { transform: translateY(-50%); } }
-
-        /* UI 레이아웃 */
+        #game-canvas { display: none; position: fixed; top: 0; left: 0; z-index: 10; cursor: none; }
+        
+        /* UI 레이어 */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        h1 { color: #ff4d4d; font-size: 4rem; text-shadow: 0 0 25px #ff0000; margin-bottom: 20px; }
+        h1 { color: #ff4d4d; font-size: clamp(2rem, 8vw, 4rem); text-shadow: 0 0 25px #ff0000; }
 
-        /* 버튼 스타일 */
         .btn-mars {
-            background: #ff4d4d; color: black; border: none; padding: 15px 30px; cursor: pointer;
-            font-family: 'Orbitron', sans-serif; font-weight: bold; transition: 0.2s;
+            background: #ff4d4d; color: black; border: none; padding: 15px 35px; cursor: pointer;
+            font-family: 'Orbitron', sans-serif; font-weight: bold; margin: 10px;
         }
         .btn-mars:hover { animation: blink 0.1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        #start-btn {
-            font-family: 'Press Start 2P', cursive; background: #ff0000; color: white;
-            padding: 25px 50px; border: 4px solid #fff; image-rendering: pixelated; display: none;
-        }
-
-        /* 게임 요소 */
-        #game-canvas { display: none; position: fixed; top: 0; left: 0; z-index: 10; cursor: none; }
-        #hud { position: fixed; top: 20px; left: 20px; z-index: 1000; color: #ff4d4d; font-size: 1.2rem; display: none; }
+        #hud { position: fixed; top: 20px; left: 20px; z-index: 1000; color: #ff4d4d; font-size: 1.2rem; display: none; text-shadow: 2px 2px #000; }
         #bgm-ctrl { position: fixed; top: 20px; right: 20px; z-index: 1000; background: rgba(255,0,0,0.2); border: 1px solid #ff4d4d; color: #ff4d4d; padding: 10px 15px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="game-bg"></div>
-    <div class="sandstorm"></div>
     <button id="bgm-ctrl" onclick="toggleBGM()">BGM: OFF</button>
-
-    <div id="hud">SCORE: <span id="score-val">0</span> | LIVES: <span id="life-val">3</span></div>
+    <div id="hud">SCORE: <span id="score-val">0</span> | HP: <span id="hp-val">100</span>%</div>
 
     <div id="ui-layer">
         <h1 id="main-title">MARS, FUTURE, AI</h1>
         <div id="auth-box">
             <button class="btn-mars" id="login-btn">SIGN IN WITH GOOGLE</button>
         </div>
-        <button class="btn-mars" id="start-btn">GAME START</button>
+        <button class="btn-mars" id="start-btn" style="display:none; font-family:'Press Start 2P'; font-size:1.5rem; background:#f00; color:#fff; border:4px solid #fff;">GAME START</button>
     </div>
 
     <canvas id="game-canvas"></canvas>
 
-    <audio id="click-sound" src="https://actions.google.com/sounds/v1/science_fiction/typing_interface.ogg"></audio>
     <audio id="bgm" src="./화성.mp3" loop></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Firebase 설정 (유저님의 정보 입력)
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT",
-            appId: "YOUR_APP_ID"
-        };
+        // Firebase 설정 (본인 것으로 교체)
+        const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "YOUR_DOMAIN", projectId: "YOUR_ID", appId: "YOUR_APP_ID" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth();
         const provider = new GoogleAuthProvider();
@@ -85,138 +64,116 @@
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const bgm = document.getElementById('bgm');
-        const clickSnd = document.getElementById('click-sound');
 
+        // --- 이미지 로드 설정 ---
+        const playerImg = new Image();
+        playerImg.src = 'https://i.imgur.com/vD96S9t.png'; // 예시용 전투기 이미지
+
+        const enemyImg = new Image();
+        enemyImg.src = 'https://i.imgur.com/S8Wv6pC.png'; // 예시용 적 이미지
+
+        // --- 게임 변수 ---
         let score = 0;
-        let lives = 3;
+        let hp = 100;
         let gameActive = false;
-        let player = { x: 0, y: 0, w: 40, h: 40 };
+        let player = { x: 0, y: 0, w: 50, h: 50 };
         let bullets = [];
         let enemies = [];
-        let items = [];
         let bgOffset = 0;
 
-        // BGM 컨트롤
         window.toggleBGM = () => {
             if (bgm.paused) { bgm.play(); document.getElementById('bgm-ctrl').innerText = "BGM: ON"; }
             else { bgm.pause(); document.getElementById('bgm-ctrl').innerText = "BGM: OFF"; }
         };
 
-        // 로그인 로직
         document.getElementById('login-btn').onclick = async () => {
-            clickSnd.play();
             try {
-                const result = await signInWithPopup(auth, provider);
+                await signInWithPopup(auth, provider);
                 document.getElementById('auth-box').style.display = 'none';
                 document.getElementById('start-btn').style.display = 'block';
                 bgm.play();
-            } catch (e) { alert("Login Failed"); }
+            } catch (e) { alert("로그인 실패"); }
         };
 
-        // 게임 시작
         document.getElementById('start-btn').onclick = () => {
-            clickSnd.play();
             document.getElementById('ui-layer').style.display = 'none';
             document.getElementById('hud').style.display = 'block';
             canvas.style.display = 'block';
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            player.x = canvas.width / 2;
-            player.y = canvas.height - 100;
             gameActive = true;
             gameLoop();
         };
 
-        // 마우스 이동 조종
         window.addEventListener('mousemove', (e) => {
             player.x = e.clientX;
             player.y = e.clientY;
         });
 
-        // 자동 발사
+        // 자동 발사 (슈팅 게임의 핵심)
         setInterval(() => {
-            if(gameActive) bullets.push({ x: player.x, y: player.y - 20, s: 10 });
-        }, 150);
-
-        function spawnEnemy() {
-            if(gameActive && Math.random() < 0.05) {
-                enemies.push({ x: Math.random() * canvas.width, y: -50, s: 3 + Math.random() * 5 });
-            }
-        }
+            if(gameActive) bullets.push({ x: player.x, y: player.y - 30, speed: 12 });
+        }, 100);
 
         function gameLoop() {
             if (!gameActive) return;
 
-            // 배경 스크롤
-            bgOffset += 2;
+            // 배경 스크롤 로직
+            bgOffset += 3;
             document.getElementById('game-bg').style.transform = `translateY(${bgOffset % window.innerHeight}px)`;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // 적 생성
-            spawnEnemy();
+            if(Math.random() < 0.05) {
+                enemies.push({ x: Math.random() * canvas.width, y: -50, speed: 4 + Math.random() * 4 });
+            }
 
-            // 총알 업데이트
+            // 총알 처리
             bullets = bullets.filter(b => {
-                b.y -= b.s;
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(b.x - 2, b.y, 4, 15);
+                b.y -= b.speed;
+                ctx.fillStyle = '#0ff'; // 레이저 색상
+                ctx.fillRect(b.x - 2, b.y, 4, 20);
                 return b.y > 0;
             });
 
-            // 적 업데이트 & 충돌 감지
+            // 적 처리 및 충돌 감지
             enemies = enemies.filter(en => {
-                en.y += en.s;
+                en.y += en.speed;
                 
-                // 적 그리기 (화성 외계 비행체 느낌)
-                ctx.fillStyle = '#ff4d4d';
-                ctx.beginPath();
-                ctx.moveTo(en.x, en.y + 20);
-                ctx.lineTo(en.x - 20, en.y - 10);
-                ctx.lineTo(en.x + 20, en.y - 10);
-                ctx.fill();
+                // 이미지 적용: drawImage(이미지, x, y, 가로, 세로)
+                ctx.drawImage(enemyImg, en.x - 25, en.y - 25, 50, 50);
 
-                // 총알과 충돌
-                let hit = false;
+                // 총알 충돌
+                let isHit = false;
                 bullets.forEach(b => {
-                    if (Math.hypot(b.x - en.x, b.y - en.y) < 25) {
-                        hit = true;
+                    if (Math.hypot(b.x - en.x, b.y - en.y) < 30) {
+                        isHit = true;
                         score += 100;
                         document.getElementById('score-val').innerText = score;
                     }
                 });
 
-                // 플레이어와 충돌
-                if (Math.hypot(player.x - en.x, player.y - en.y) < 30) {
-                    lives--;
-                    document.getElementById('life-val').innerText = lives;
-                    if (lives <= 0) gameOver();
+                // 플레이어 충돌
+                if (Math.hypot(player.x - en.x, player.y - en.y) < 40) {
+                    hp -= 10;
+                    document.getElementById('hp-val').innerText = hp;
+                    if (hp <= 0) gameOver();
                     return false;
                 }
 
-                return !hit && en.y < canvas.height;
+                return !isHit && en.y < canvas.height;
             });
 
-            // 플레이어(전투기) 그리기
-            drawPlayer();
+            // 플레이어 그리기
+            ctx.drawImage(playerImg, player.x - 30, player.y - 30, 60, 60);
 
             requestAnimationFrame(gameLoop);
         }
 
-        function drawPlayer() {
-            ctx.fillStyle = '#00d2ff';
-            ctx.shadowBlur = 15; ctx.shadowColor = '#00d2ff';
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y - 30);
-            ctx.lineTo(player.x - 25, player.y + 15);
-            ctx.lineTo(player.x + 25, player.y + 15);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-        }
-
         function gameOver() {
             gameActive = false;
-            alert("전투 불능! 화성 기지로 귀환합니다.\n최종 점수: " + score);
+            alert(`GAME OVER\nFINAL SCORE: ${score}`);
             location.reload();
         }
     </script>
