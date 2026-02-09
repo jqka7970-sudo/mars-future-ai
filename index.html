@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mars, Future, AI - Strikers</title>
+    <title>Mars, Future, AI</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #1a0505; font-family: 'Orbitron', sans-serif; color: white; }
 
-        /* 배경: 화성 이미지 */
+        /* 배경: 화성 지표면 무한 스크롤 */
         #game-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 200%;
             background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
@@ -25,9 +25,9 @@
         }
         @keyframes drift { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 
-        /* UI 및 버튼 */
+        /* UI 레이어 */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        h1 { color: #ff4d4d; font-size: clamp(2rem, 8vw, 4.5rem); text-shadow: 0 0 25px #ff0000; margin: 0; }
+        h1 { color: #ff4d4d; font-size: clamp(2rem, 8vw, 4.5rem); text-shadow: 0 0 25px #ff0000; margin: 0; text-align: center; }
 
         .btn-mars {
             background: #ff4d4d; color: black; border: none; padding: 15px 35px; cursor: pointer;
@@ -41,7 +41,7 @@
             padding: 25px 50px; border: 4px solid #fff; image-rendering: pixelated; display: none;
         }
 
-        /* 게임 화면 요소 */
+        /* HUD 및 캔버스 */
         #game-canvas { display: none; position: fixed; top: 0; left: 0; z-index: 10; cursor: none; }
         #hud { position: fixed; top: 25px; left: 25px; z-index: 1000; color: #ff4d4d; font-size: 1.2rem; display: none; text-shadow: 2px 2px 0px #000; }
         #bgm-ctrl { position: fixed; top: 20px; right: 20px; z-index: 1000; background: rgba(255,0,0,0.2); border: 1px solid #ff4d4d; color: #ff4d4d; padding: 10px 15px; cursor: pointer; }
@@ -56,7 +56,7 @@
     <div id="hud">SCORE: <span id="score-val">0</span> | HP: <span id="hp-val">100</span>%</div>
 
     <div id="ui-layer">
-        <h1 id="main-title">MARS, FUTURE, AI</h1>
+        <h1 id="main-title">MARS<br>FUTURE<br>AI</h1>
         <div id="auth-box">
             <button class="btn-mars" id="login-btn">SIGN IN WITH GOOGLE</button>
         </div>
@@ -72,13 +72,17 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Firebase 설정 (유저님의 정보로 교체)
+        // 유저님께서 제공해주신 Firebase 설정값 적용
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDSgG2ZWSklzTcZZZjd1cs0q3wYKrMPkZs",
+            authDomain: "mars-future-ai.firebaseapp.com",
+            projectId: "mars-future-ai",
+            storageBucket: "mars-future-ai.firebasestorage.app",
+            messagingSenderId: "836937842227",
+            appId: "1:836937842227:web:6c0bfbb45a3a6dbf206d46",
+            measurementId: "G-EYVBGG7XQ0"
         };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth();
         const provider = new GoogleAuthProvider();
@@ -88,7 +92,7 @@
         const bgm = document.getElementById('bgm');
         const clickSnd = document.getElementById('click-sound');
 
-        // 이미지 객체 미리 준비 (경로가 없어도 에러 안 나게 처리)
+        // 이미지 로딩
         const shipImg = new Image(); shipImg.src = 'https://i.imgur.com/vD96S9t.png';
         const enemyImg = new Image(); enemyImg.src = 'https://i.imgur.com/S8Wv6pC.png';
 
@@ -100,7 +104,6 @@
         let enemies = [];
         let bgOffset = 0;
 
-        // BGM 컨트롤
         window.toggleBGM = () => {
             if (bgm.paused) { bgm.play(); document.getElementById('bgm-ctrl').innerText = "BGM: ON"; }
             else { bgm.pause(); document.getElementById('bgm-ctrl').innerText = "BGM: OFF"; }
@@ -114,7 +117,7 @@
                 document.getElementById('auth-box').style.display = 'none';
                 document.getElementById('start-btn').style.display = 'block';
                 bgm.play();
-            } catch (e) { alert("로그인 실패: Firebase 설정을 확인하세요."); }
+            } catch (e) { alert("로그인 실패! Firebase 도메인 설정을 확인하세요."); }
         };
 
         // 게임 시작
@@ -129,78 +132,6 @@
             requestAnimationFrame(gameLoop);
         };
 
-        // 마우스 조종
-        window.addEventListener('mousemove', (e) => {
-            player.x = e.clientX;
-            player.y = e.clientY;
-        });
+        window.addEventListener('mousemove', (e) => { player.x = e.clientX; player.y = e.clientY; });
 
-        // 자동 사격 타이머
-        setInterval(() => {
-            if(gameActive) bullets.push({ x: player.x, y: player.y - 30 });
-        }, 120);
-
-        function gameLoop() {
-            if (!gameActive) return;
-
-            // 배경 무한 스크롤
-            bgOffset += 4;
-            document.getElementById('game-bg').style.backgroundPosition = `0px ${bgOffset}px`;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 적 생성
-            if(Math.random() < 0.06) {
-                enemies.push({ x: Math.random() * canvas.width, y: -50, speed: 5 + Math.random() * 5 });
-            }
-
-            // 총알 레이저 그리기
-            bullets = bullets.filter(b => {
-                b.y -= 15;
-                ctx.fillStyle = '#0ff';
-                ctx.shadowBlur = 10; ctx.shadowColor = '#0ff';
-                ctx.fillRect(b.x - 2, b.y, 4, 20);
-                ctx.shadowBlur = 0;
-                return b.y > 0;
-            });
-
-            // 적 비행체 처리
-            enemies = enemies.filter(en => {
-                en.y += en.speed;
-                
-                // 적 이미지 또는 원형 그리기
-                if(enemyImg.complete) ctx.drawImage(enemyImg, en.x - 25, en.y - 25, 50, 50);
-                else { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(en.x, en.y, 20, 0, Math.PI*2); ctx.fill(); }
-
-                let alive = true;
-
-                // 총알 충돌 확인
-                bullets.forEach((b, bi) => {
-                    if (Math.hypot(b.x - en.x, b.y - en.y) < 30) {
-                        score += 100;
-                        document.getElementById('score-val').innerText = score;
-                        alive = false;
-                        bullets.splice(bi, 1);
-                    }
-                });
-
-                // 플레이어 충돌 확인
-                if (Math.hypot(player.x - en.x, player.y - en.y) < 40) {
-                    hp -= 20;
-                    document.getElementById('hp-val').innerText = hp;
-                    alive = false;
-                    if (hp <= 0) { gameActive = false; alert("MISSION FAILED. SCORE: " + score); location.reload(); }
-                }
-
-                return alive && en.y < canvas.height;
-            });
-
-            // 플레이어 전투기 그리기
-            if(shipImg.complete) ctx.drawImage(shipImg, player.x - 30, player.y - 30, 60, 60);
-            else { ctx.fillStyle = 'cyan'; ctx.beginPath(); ctx.moveTo(player.x, player.y-20); ctx.lineTo(player.x-20, player.y+20); ctx.lineTo(player.x+20, player.y+20); ctx.fill(); }
-
-            requestAnimationFrame(gameLoop);
-        }
-    </script>
-</body>
-</html>
+        setInterval(() =>
