@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>MARS FUTURE AI : DEBUG</title>
+<title>MARS FUTURE AI : RED PLANET</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
 html,body{
   margin:0;
   padding:0;
@@ -14,7 +15,12 @@ html,body{
   background:#000;
   font-family:'Orbitron', sans-serif;
 }
-canvas{display:block;touch-action:none}
+
+canvas{
+  display:block;
+}
+
+/* ===== START SCREEN ===== */
 #startScreen{
   position:fixed;
   inset:0;
@@ -22,36 +28,49 @@ canvas{display:block;touch-action:none}
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  background:radial-gradient(circle at center, #2b0000 0%, #000 100%);
+  background:radial-gradient(circle at center,#2b0000 0%,#000 100%);
   z-index:10;
   color:#fff;
+  pointer-events:auto;
 }
+
 #title{
-  font-size: clamp(40px, 8vw, 80px);
-  font-weight: 900;
+  font-size:clamp(40px,8vw,80px);
+  font-weight:900;
   color:#ff3333;
   text-shadow:0 0 20px #f00;
   margin-bottom:40px;
 }
+
 #gameStart{
   font-size:24px;
   padding:15px 50px;
-  background:none;
   border:2px solid #ff3333;
   color:#ff3333;
   cursor:pointer;
+  margin-bottom:20px;
 }
+
 #gameStart:hover{
   background:#ff3333;
   color:#000;
 }
+
+#bgmBtn{
+  font-size:12px;
+  color:#aaa;
+  cursor:pointer;
+}
+
+/* ===== DEBUG HUD ===== */
 #debug{
   position:fixed;
   left:10px;
   bottom:10px;
   color:#0f0;
-  font-size:12px;
-  opacity:0.8;
+  font-size:11px;
+  opacity:0.7;
+  pointer-events:none;
 }
 </style>
 </head>
@@ -61,19 +80,18 @@ canvas{display:block;touch-action:none}
 <div id="startScreen">
   <div id="title">MARS<br>FUTURE AI</div>
   <div id="gameStart">MISSION START</div>
+  <div id="bgmBtn">SOUND : OFF</div>
 </div>
 
 <canvas id="c"></canvas>
-<div id="debug">DEBUG READY</div>
+<div id="debug">READY</div>
 
 <script>
 "use strict";
 
-/* ================= BASIC ================= */
+/* ===== CANVAS ===== */
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
-const debugEl = document.getElementById("debug");
-
 function resize(){
   c.width = innerWidth;
   c.height = innerHeight;
@@ -81,7 +99,7 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ================= STATE ================= */
+/* ===== STATE ===== */
 let gameRunning = false;
 let score = 0;
 let nextBossScore = 10000;
@@ -91,8 +109,6 @@ const player = {
   y: c.height*0.8,
   r: 15,
   hp: 100,
-  shield: 0,
-  shieldTimer: 0,
   power: 1,
   powerTimer: 0
 };
@@ -100,87 +116,98 @@ const player = {
 let bullets = [];
 let enemies = [];
 let enemyBullets = [];
-let items = [];
 
-const bgStars = Array.from({length:80},()=>({
+const stars = Array.from({length:80},()=>({
   x:Math.random()*c.width,
   y:Math.random()*c.height,
   s:Math.random()*2+1
 }));
 
-/* ================= INPUT ================= */
+/* ===== AUDIO ===== */
+const bgm = new Audio("화성.mp3");
+bgm.loop = true;
+bgm.volume = 0.5;
+let bgmEnabled = false;
+
+/* ===== DOM ===== */
+const startScreen = document.getElementById("startScreen");
+const gameStartBtn = document.getElementById("gameStart");
+const bgmBtn = document.getElementById("bgmBtn");
+const debugEl = document.getElementById("debug");
+
+/* ===== INPUT ===== */
 function move(e){
   const p = e.touches ? e.touches[0] : e;
   player.x = p.clientX;
   player.y = p.clientY;
 }
+
 c.addEventListener("mousemove", move);
 c.addEventListener("touchmove", e=>{
   move(e);
   e.preventDefault();
 },{passive:false});
 
-/* ================= START ================= */
-document.getElementById("gameStart").onclick = ()=>{
-  document.getElementById("startScreen").style.display="none";
+/* ===== START ===== */
+gameStartBtn.addEventListener("click", ()=>{
+  startScreen.style.display = "none";
   gameRunning = true;
-};
+  c.style.touchAction = "none";
 
-/* ================= SHOOT ================= */
+  if(bgmEnabled){
+    bgm.play().catch(()=>{});
+  }
+});
+
+bgmBtn.addEventListener("click", ()=>{
+  bgmEnabled = !bgmEnabled;
+  bgmBtn.innerText = bgmEnabled ? "SOUND : ON" : "SOUND : OFF";
+  if(!bgmEnabled){
+    bgm.pause();
+    bgm.currentTime = 0;
+  }
+});
+
+/* ===== SHOOT ===== */
 setInterval(()=>{
   if(!gameRunning) return;
 
-  bullets.push({
-    x:player.x,
-    y:player.y-20,
-    v:12,
-    dmg:20
-  });
+  bullets.push({x:player.x,y:player.y-20,v:12,dmg:20});
 
-  if(player.power > 1){
+  if(player.power>1){
     bullets.push({x:player.x-15,y:player.y,v:12,dmg:20});
     bullets.push({x:player.x+15,y:player.y,v:12,dmg:20});
   }
 },180);
 
-/* ================= ENEMY ================= */
+/* ===== ENEMY ===== */
 setInterval(()=>{
   if(!gameRunning) return;
-  const type = Math.random()<0.3?"chaser":(Math.random()<0.6?"zigzag":"fast");
+
   enemies.push({
     x:Math.random()*c.width,
     y:-30,
-    size:18,
-    type,
+    r:18,
     hp:40,
-    speed:type==="fast"?7:3.5,
-    angle:0
+    speed:4
   });
 },450);
 
-/* ================= BOSS ================= */
+/* ===== BOSS ===== */
 let boss = null;
 function spawnBoss(){
-  boss = {
-    x:c.width/2,
-    y:100,
-    r:50,
-    hp:5000,
-    cd:0
-  };
+  boss = {x:c.width/2,y:120,r:50,hp:5000,cd:0};
 }
 
-/* ================= LOOP ================= */
+/* ===== LOOP ===== */
 function loop(){
   try{
-
-    /* BACKGROUND */
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,c.width,c.height);
 
     ctx.fillStyle="#fff";
-    bgStars.forEach(s=>{
-      s.y += s.s;
+    stars.forEach(s=>{
+      s.y+=s.s;
       if(s.y>c.height) s.y=0;
       ctx.fillRect(s.x,s.y,s.s,s.s);
     });
@@ -192,17 +219,54 @@ function loop(){
 
     if(score>=nextBossScore && !boss){
       spawnBoss();
-      nextBossScore += 10000;
+      nextBossScore+=10000;
     }
 
-    /* BULLETS */
     bullets = bullets.filter(b=>{
-      b.y -= b.v;
+      b.y-=b.v;
       enemies.forEach(e=>{
-        if(Math.hypot(b.x-e.x,b.y-e.y)<e.size){
-          e.hp -= b.dmg;
-          b.y = -999;
+        if(Math.hypot(b.x-e.x,b.y-e.y)<e.r){
+          e.hp-=b.dmg;
+          b.y=-999;
         }
       });
       if(boss && Math.hypot(b.x-boss.x,b.y-boss.y)<boss.r){
-        boss.hp -
+        boss.hp-=b.dmg;
+        b.y=-999;
+      }
+      return b.y>0;
+    });
+
+    enemies = enemies.filter(e=>{
+      e.y+=e.speed;
+      if(e.hp<=0){ score+=100; return false; }
+      return e.y<c.height+50;
+    });
+
+    if(boss){
+      boss.x+=Math.sin(Date.now()*0.002)*4;
+      boss.cd--;
+      if(boss.cd<=0){
+        for(let i=0;i<10;i++){
+          const a=i*Math.PI/5;
+          enemyBullets.push({
+            x:boss.x,
+            y:boss.y,
+            vx:Math.cos(a)*5,
+            vy:Math.sin(a)*5
+          });
+        }
+        boss.cd=50;
+      }
+      if(boss.hp<=0){ boss=null; score+=3000; }
+    }
+
+    enemyBullets = enemyBullets.filter(eb=>{
+      eb.x+=eb.vx;
+      eb.y+=eb.vy;
+      return eb.x>0&&eb.x<c.width&&eb.y>0&&eb.y<c.height;
+    });
+
+    /* DRAW PLAYER */
+    ctx.save();
+    ctx.tr
