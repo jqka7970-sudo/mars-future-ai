@@ -1,116 +1,217 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MARS FUTURE AI - STRIKE</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
-    <style>
-        :root { --mars: #ff3333; --ui-gold: #ffcc00; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }
-        
-        /* 화성 느낌 배경 */
-        .stars { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle at center, #3d0e0e 0%, #000 100%); z-index: 0; }
-        
-        #ui-layer { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        
-        h1 { font-size: 5.5rem; color: var(--mars); text-align: center; letter-spacing: 12px; margin: 0 0 40px 0; text-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
+<meta charset="UTF-8">
+<title>MARS FUTURE AI</title>
 
-        /* 스타트 버튼 효과 */
-        #start-btn {
-            padding: 20px 60px; font-size: 1.8rem; background: transparent; color: white;
-            border: 3px solid var(--mars); cursor: pointer; font-family: 'Orbitron'; transition: 0.3s;
-        }
-        #start-btn:hover { background: var(--mars); color: black; animation: blink 0.1s infinite; }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&display=swap');
 
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  font-family: 'Orbitron', sans-serif;
+  overflow: hidden;
+  color: #ff2b2b;
+}
 
-        #sound-toggle {
-            margin-top: 25px; background: none; border: 1px solid #444; color: #888;
-            cursor: pointer; padding: 10px 20px; font-size: 1rem; transition: 0.3s;
-        }
-        #sound-toggle.active { color: var(--ui-gold); border-color: var(--ui-gold); }
+#startScreen {
+  position: absolute;
+  inset: 0;
+  background: url("https://images.unsplash.com/photo-1580428180131-08c9c6e5b434")
+              center/cover no-repeat;
+  filter: hue-rotate(-20deg) brightness(0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
 
-        /* 게임 화면 */
-        canvas { display: none; background: #050000; margin: 0 auto; cursor: none; border-left: 1px solid #311; border-right: 1px solid #311; }
-        #hud { position: absolute; top: 20px; width: 100%; display: none; justify-content: space-around; color: var(--ui-gold); font-size: 1.5rem; z-index: 20; }
-    </style>
+header {
+  margin-top: 40px;
+  display: flex;
+  gap: 40px;
+  font-size: 32px;
+  letter-spacing: 4px;
+}
+
+#startBtn {
+  margin-top: auto;
+  margin-bottom: 20px;
+  font-size: 28px;
+  padding: 20px 60px;
+  background: transparent;
+  border: 2px solid #ff2b2b;
+  color: #ff2b2b;
+  cursor: pointer;
+  animation: blink 1.2s infinite;
+}
+
+#startBtn:hover {
+  box-shadow: 0 0 20px #ff2b2b;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+#audioBtn {
+  margin-bottom: 60px;
+  background: none;
+  border: 1px solid #ff2b2b;
+  color: #ff2b2b;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+canvas {
+  display: none;
+  margin: auto;
+  background: #100000;
+}
+</style>
 </head>
+
 <body>
 
-<div class="stars"></div>
-<audio id="bgm" loop><source src="화성.mp3" type="audio/mpeg"></audio>
+<!-- START SCREEN -->
+<div id="startScreen">
+  <header>
+    <span>MARS</span>
+    <span>FUTURE</span>
+    <span>AI</span>
+  </header>
 
-<div id="hud">
-    <span>SCORE: <span id="score">0</span></span>
-    <span>LIVES: <span id="lives">3</span></span>
+  <button id="startBtn">START GAME</button>
+  <button id="audioBtn">🔊 MARS.mp3</button>
 </div>
 
-<div id="ui-layer">
-    <h1>MARS<br>FUTURE AI</h1>
-    <button id="start-btn">START GAME</button>
-    <button id="sound-toggle">SOUND: OFF</button>
-</div>
+<!-- GAME -->
+<canvas id="game" width="480" height="640"></canvas>
 
-<canvas id="gameCanvas"></canvas>
+<!-- BGM -->
+<audio id="bgm" src="mars.mp3" loop preload="auto"></audio>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const bgm = document.getElementById('bgm');
-    const startBtn = document.getElementById('start-btn');
-    const soundToggle = document.getElementById('sound-toggle');
-    const scoreEl = document.getElementById('score');
-    const livesEl = document.getElementById('lives');
+/* ====== BASIC SETUP ====== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    let gameActive = false;
-    let isSoundOn = false;
-    let score = 0;
-    let lives = 3;
-    let frame = 0;
+const startScreen = document.getElementById("startScreen");
+const startBtn = document.getElementById("startBtn");
+const audioBtn = document.getElementById("audioBtn");
+const bgm = document.getElementById("bgm");
 
-    // 사운드 토글 (스타트 전 설정)
-    soundToggle.addEventListener('click', () => {
-        isSoundOn = !isSoundOn;
-        soundToggle.innerText = `SOUND: ${isSoundOn ? 'ON' : 'OFF'}`;
-        soundToggle.classList.toggle('active', isSoundOn);
-    });
+let playing = false;
+let audioOn = false;
 
-    // 게임 시작 진입
-    startBtn.addEventListener('click', () => {
-        if (isSoundOn) {
-            bgm.play().catch(e => console.warn("음악 파일(화성.mp3)이 없습니다."));
-        }
-        
-        document.getElementById('ui-layer').style.display = 'none';
-        document.getElementById('hud').style.display = 'flex';
-        canvas.style.display = 'block';
-        
-        canvas.width = 500;
-        canvas.height = window.innerHeight;
-        gameActive = true;
-        
-        requestAnimationFrame(gameLoop);
-    });
+/* ====== AUDIO TOGGLE ====== */
+audioBtn.onclick = () => {
+  if (!audioOn) {
+    bgm.volume = 0.6;
+    bgm.play();
+    audioBtn.textContent = "🔇 MARS.mp3";
+  } else {
+    bgm.pause();
+    audioBtn.textContent = "🔊 MARS.mp3";
+  }
+  audioOn = !audioOn;
+};
 
-    // 게임 객체
-    let player = { x: 250, y: 700 };
-    let bullets = [];
-    let enemies = [];
+/* ====== START GAME ====== */
+startBtn.onclick = () => {
+  startScreen.style.display = "none";
+  canvas.style.display = "block";
+  playing = true;
+  loop();
+};
 
-    // 마우스 이동 제어
-    window.addEventListener('mousemove', (e) => {
-        if (!gameActive) return;
-        const rect = canvas.getBoundingClientRect();
-        player.x = e.clientX - rect.left;
-        player.y = e.clientY - rect.top;
-    });
+/* ====== GAME OBJECTS ====== */
+const player = { x: 240, y: 560, r: 6 };
+const bullets = [];
+const enemies = [];
+const enemyBullets = [];
 
-    function gameLoop() {
-        if (!gameActive) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        frame++;
+/* ====== INPUT ====== */
+document.addEventListener("mousemove", e => {
+  if (!playing) return;
+  const rect = canvas.getBoundingClientRect();
+  player.x = e.clientX - rect.left;
+  player.y = e.clientY - rect.top;
+});
 
-        // 1. 플레이어 (전투기 모양)
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.moveTo(player.
+/* ====== PLAYER SHOOT ====== */
+setInterval(() => {
+  if (playing) bullets.push({ x: player.x, y: player.y, v: -6 });
+}, 200);
+
+/* ====== ENEMY SPAWN ====== */
+setInterval(() => {
+  if (playing) enemies.push({
+    x: Math.random() * 440 + 20,
+    y: -20,
+    r: 10,
+    t: 0
+  });
+}, 800);
+
+/* ====== UPDATE ====== */
+function update() {
+  bullets.forEach(b => b.y += b.v);
+
+  enemies.forEach(e => {
+    e.y += 1.2;
+    e.t++;
+    if (e.t % 40 === 0) {
+      for (let i = 0; i < 8; i++) {
+        const a = (Math.PI * 2 / 8) * i;
+        enemyBullets.push({
+          x: e.x,
+          y: e.y,
+          vx: Math.cos(a) * 2,
+          vy: Math.sin(a) * 2
+        });
+      }
+    }
+  });
+
+  enemyBullets.forEach(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+  });
+}
+
+/* ====== DRAW ====== */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ff2b2b";
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  bullets.forEach(b => ctx.fillRect(b.x - 1, b.y - 6, 2, 6));
+
+  enemies.forEach(e => {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 3));
+}
+
+/* ====== GAME LOOP ====== */
+function loop() {
+  if (!playing) return;
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+</script>
+
+</body>
+</html>
