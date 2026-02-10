@@ -4,82 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>MARS FUTURE AI : RED PLANET</title>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
-html,body{
-  margin:0;padding:0;overflow:hidden;
-  background:#050000;
-  font-family:'Orbitron', sans-serif; /* SF 느낌 폰트 */
-}
+html,body{ margin:0;padding:0;overflow:hidden; background:#000; font-family:'Orbitron', sans-serif; }
 canvas{display:block;touch-action:none}
-
-/* === START SCREEN STYLING === */
 #startScreen{
-  position:fixed;inset:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  background:linear-gradient(135deg, #000000 0%, #1a0505 100%);
-  z-index:10;
-  color:#fff;
+  position:fixed;inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:radial-gradient(circle at center, #2b0000 0%, #000 100%); z-index:10; color:#fff;
 }
-
-/* 제목 네온 효과 */
 #title{
-  font-size: clamp(40px, 8vw, 80px);
-  font-weight: 900;
-  color: #ff3333;
-  text-align: center;
-  text-shadow: 
-    0 0 10px #ff0000,
-    0 0 20px #ff0000,
-    0 0 40px #ff0000;
-  margin-bottom: 50px;
-  line-height: 1.2;
-  animation: pulse 2s infinite alternate;
+  font-size: clamp(40px, 8vw, 80px); font-weight: 900; color: #ff3333; text-align: center;
+  text-shadow: 0 0 20px #f00; margin-bottom: 40px; line-height: 1.1; animation: pulse 1.5s infinite alternate;
 }
-@keyframes pulse {
-  0% { text-shadow: 0 0 10px #f00, 0 0 20px #f00; opacity: 0.9; }
-  100% { text-shadow: 0 0 20px #f00, 0 0 40px #f00, 0 0 60px #f00; opacity: 1; }
-}
-
-/* 게임 시작 버튼 디자인 */
+@keyframes pulse { from { opacity: 0.8; transform: scale(0.98); } to { opacity: 1; transform: scale(1.02); } }
 #gameStart{
-  font-size: 24px;
-  padding: 15px 60px;
-  background: rgba(255, 0, 0, 0.1);
-  border: 2px solid #ff3333;
-  color: #ff3333;
-  cursor: pointer;
-  box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 2px;
+  font-size: 24px; padding: 15px 50px; background: none; border: 2px solid #ff3333; color: #ff3333;
+  cursor: pointer; letter-spacing: 2px; transition: 0.3s;
 }
-#gameStart:hover{
-  background: #ff3333;
-  color: #000;
-  box-shadow: 0 0 30px #ff3333;
-  transform: scale(1.05);
-}
-
-/* BGM 버튼 */
-#bgmBtn{
-  margin-top: 30px;
-  font-size: 14px;
-  color: #666;
-  border: 1px solid #444;
-  padding: 5px 15px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-#bgmBtn:hover{ color: #fff; border-color: #fff; }
+#gameStart:hover{ background: #ff3333; color: #000; box-shadow: 0 0 30px #f00; }
+#bgmBtn{ margin-top: 20px; font-size: 12px; color: #555; cursor: pointer; }
 </style>
 </head>
-
 <body>
 
 <div id="startScreen">
@@ -91,272 +36,161 @@ canvas{display:block;touch-action:none}
 <canvas id="c"></canvas>
 
 <script>
-/* ================= ASSETS (이미지 로드) ================= */
-// 무료 게임 에셋 (Kenney.nl)의 GitHub Raw URL 사용
-const imgPlayer = new Image();
-imgPlayer.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/playerShip1_blue.png";
-
-const imgEnemy = new Image();
-imgEnemy.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyBlack1.png";
-
-const imgBoss = new Image(); // 보스는 큰 빨간 비행체
-imgBoss.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyRed5.png";
-
-const imgBg = new Image();
-imgBg.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/Backgrounds/black.png";
-
-/* ================= BASIC ================= */
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 addEventListener("resize",resize);resize();
 
-/* ================= AUDIO ================= */
-const bgm=new Audio("화성.mp3"); // 파일이 없으면 오류나지만 게임은 멈추지 않음
-bgm.loop=true;
-bgm.volume=0.6;
-let bgmEnabled=false;
+/* ================= ASSETS (외부 이미지) ================= */
+const imgPlayer = new Image(); imgPlayer.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/playerShip1_blue.png";
+const imgEnemy = new Image(); imgEnemy.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyBlack1.png";
+const imgBoss = new Image(); imgBoss.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyRed5.png";
 
-/* ================= START PAGE ================= */
-let gameRunning=false;
-const startScreen=document.getElementById("startScreen");
+/* ================= STATE ================= */
+let gameRunning=false, score=0, nextBossScore=10000, flashTimer=0;
+const player={ x:c.width/2, y:c.height*0.8, r:18, hp:100, shield:0, shieldTimer:0, power:1, powerTimer:0 };
+let bullets=[], enemies=[], enemyBullets=[], items=[];
+let bgStars = Array.from({length: 100}, () => ({x: Math.random()*c.width, y: Math.random()*c.height, s: Math.random()*2+1}));
+
+/* ================= AUDIO ================= */
+const bgm=new Audio("화성.mp3"); bgm.loop=true; bgm.volume=0.5;
+let bgmEnabled=false;
 document.getElementById("gameStart").onclick=()=>{
-  startScreen.style.display="none";
+  document.getElementById("startScreen").style.display="none";
   gameRunning=true;
   if(bgmEnabled) bgm.play().catch(()=>{});
 };
-const bgmBtn=document.getElementById("bgmBtn");
-bgmBtn.onclick=()=>{
+document.getElementById("bgmBtn").onclick=()=>{
   bgmEnabled=!bgmEnabled;
-  bgmBtn.innerText=bgmEnabled?"SOUND : ON":"SOUND : OFF";
-  if(!gameRunning)return;
-  bgmEnabled?bgm.play().catch(()=>{}) : bgm.pause();
+  document.getElementById("bgmBtn").innerText=bgmEnabled?"SOUND : ON":"SOUND : OFF";
 };
-
-/* ================= STATE ================= */
-let score=0,nextBossScore=10000;
-let boss=null;
-const player={
-  x:c.width/2,y:c.height*0.8,r:20, // 반지름 조금 키움 (이미지 크기에 맞게)
-  hp:100,
-  shield:0,shieldTimer:0,
-  power:1,powerTimer:0
-};
-let bullets=[],enemies=[],enemyBullets=[],items=[];
-let flashTimer=0;
-let bgY=0; // 배경 스크롤용 변수
 
 /* ================= INPUT ================= */
-let usingTouch=false;
-c.addEventListener("mousemove",e=>{
-  if(usingTouch)return;
-  player.x=e.clientX;player.y=e.clientY;
-});
-c.addEventListener("touchstart",e=>{
-  usingTouch=true;
-  const t=e.touches[0];
-  player.x=t.clientX;player.y=t.clientY;
-});
-c.addEventListener("touchmove",e=>{
-  usingTouch=true;
-  const t=e.touches[0];
-  player.x=t.clientX;player.y=t.clientY;
-  e.preventDefault();
-},{passive:false});
-c.addEventListener("touchend",()=>usingTouch=false);
+const move = e => { 
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+  const y = e.touches ? e.touches[0].clientY : e.clientY;
+  player.x = x; player.y = y;
+};
+c.addEventListener("mousemove", move);
+c.addEventListener("touchmove", e => { move(e); e.preventDefault(); }, {passive:false});
 
-/* ================= FIRE ================= */
-setInterval(()=>{
-  if(!gameRunning)return;
-  for(let i=0;i<player.power;i++){
-    bullets.push({
-      x:player.x+(i-(player.power-1)/2)*10,
-      y:player.y-20, // 총알 발사 위치 조정
-      v:12,dmg:20
-    });
-  }
-},180); // 발사 속도 약간 상향
+/* ================= GAME LOGIC (적 2배!) ================= */
+setInterval(() => { if(!gameRunning) return; bullets.push({x:player.x, y:player.y-20, v:12, dmg:20}); if(player.power>1) { bullets.push({x:player.x-15, y:player.y, v:12, dmg:20}); bullets.push({x:player.x+15, y:player.y, v:12, dmg:20}); } }, 180);
 
-/* ================= ENEMY (수정: 물량 2배) ================= */
-setInterval(()=>{
-  if(!gameRunning)return;
-  const r=Math.random();
-  let type=r<0.33?"chaser":r<0.66?"zigzag":"fast";
-  
-  // 적 이미지 크기에 맞춰 size 조정
-  enemies.push({
-    x:Math.random()*c.width,y:-40,
-    size:20, // 히트박스 크기
-    type,hp:40,
-    speed:type==="fast"?5+Math.random()*2:type==="chaser"?3:2.5,
-    angle:0
-  });
-}, 450); // 원래 900 -> 450으로 변경 (적 2배 많이 나옴)
-
-/* ================= ITEM ================= */
-setInterval(()=>{
-  if(!gameRunning)return;
-  const r=Math.random();
-  let type=r<0.33?"power":r<0.66?"shield":"bomb";
-  items.push({x:Math.random()*c.width,y:-20,r:12,type,v:2.5});
-},4000);
+setInterval(() => {
+  if(!gameRunning) return;
+  const type = Math.random() < 0.3 ? "chaser" : (Math.random() < 0.6 ? "zigzag" : "fast");
+  enemies.push({ x: Math.random()*c.width, y: -30, size: 20, type, hp: 40, speed: type==="fast"?6:3, angle: 0 });
+}, 450); // 900ms -> 450ms로 적 생성 주기 단축
 
 /* ================= BOSS ================= */
-function spawnBoss(){
-  boss={x:c.width/2,y:120,r:60,maxHp:5000,hp:5000,phase:1,cd:0};
-}
-function updateBoss(){
-  if(!boss)return;
-  const level=Math.floor(score/10000);
-  if(boss.hp<=boss.maxHp*0.5)boss.phase=2;
-  boss.x+=Math.sin(Date.now()*0.004)*(boss.phase===2?4:2);
-  boss.cd--;
-  const rate=Math.max(20,80-level*10); // 난이도에 따라 공격 속도 증가
-  if(boss.cd<=0){
-    const cnt=6+level*2+(boss.phase===2?4:0);
-    for(let i=0;i<cnt;i++){
-      const a=i*(Math.PI*2/cnt);
-      enemyBullets.push({x:boss.x,y:boss.y,vx:Math.cos(a)*4,vy:Math.sin(a)*4});
-    }
-    boss.cd=rate;
-  }
-}
+let boss=null;
+function spawnBoss(){ boss={x:c.width/2, y:100, r:60, maxHp:5000, hp:5000, cd:0}; }
 
 /* ================= LOOP ================= */
 function loop(){
-  // 배경 그리기 (스크롤 효과)
-  if(imgBg.complete) {
-      bgY += 1; // 배경 이동 속도
-      if(bgY >= c.height) bgY = 0;
-      // 끊김 없는 배경을 위해 두 번 그리기
-      ctx.drawImage(imgBg, 0, bgY, c.width, c.height); 
-      ctx.drawImage(imgBg, 0, bgY - c.height, c.width, c.height);
-  } else {
-      ctx.clearRect(0,0,c.width,c.height);
-  }
-
-  if(!gameRunning){requestAnimationFrame(loop);return;}
-
-  if(score>=nextBossScore&&!boss){spawnBoss();nextBossScore+=10000;}
-
-  if(player.powerTimer>0&&--player.powerTimer<=0)player.power=1;
-  if(player.shieldTimer>0&&--player.shieldTimer<=0)player.shield=0;
-  if(flashTimer>0)flashTimer--;
-
-  bullets=bullets.filter(b=>{b.y-=b.v;return b.y>0});
-
-  enemies=enemies.filter(e=>{
-    if(e.type==="fast")e.y+=e.speed;
-    if(e.type==="chaser"){
-      const dx=player.x-e.x,dy=player.y-e.y,l=Math.hypot(dx,dy);
-      e.x+=dx/l*e.speed;e.y+=dy/l*e.speed;
-    }
-    if(e.type==="zigzag"){e.y+=e.speed;e.x+=Math.sin(e.angle+=0.1)*3;}
-
-    if(Math.hypot(e.x-player.x,e.y-player.y)<player.r+e.size){
-      player.hp-=10;return false;
-    }
-    bullets.forEach((b,i)=>{
-      if(Math.hypot(b.x-e.x,b.y-e.y)<e.size+5){ // 판정 약간 여유
-        e.hp-=b.dmg;bullets.splice(i,1);
-      }
-    });
-    if(e.hp<=0){score+=100;return false;}
-    return e.y<c.height+40;
+  // 1. 배경 (별무리 효과)
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = "#fff";
+  bgStars.forEach(s => {
+    s.y += s.s; if(s.y > c.height) s.y = 0;
+    ctx.fillRect(s.x, s.y, s.s, s.s);
   });
 
-  updateBoss();
-  if(boss){
-    bullets.forEach((b,i)=>{
-      if(Math.hypot(b.x-boss.x,b.y-boss.y)<boss.r){
-        boss.hp-=b.dmg;bullets.splice(i,1);
-      }
+  if(!gameRunning) { requestAnimationFrame(loop); return; }
+
+  // 2. 보스 등장 체크
+  if(score >= nextBossScore && !boss) { spawnBoss(); nextBossScore += 10000; }
+
+  // 3. 충돌 및 이동 로직
+  if(player.powerTimer > 0) player.powerTimer--; else player.power = 1;
+  if(player.shieldTimer > 0) player.shieldTimer--; else player.shield = 0;
+  if(flashTimer > 0) flashTimer--;
+
+  bullets = bullets.filter(b => {
+    b.y -= b.v;
+    enemies.forEach(e => {
+      if(Math.hypot(b.x-e.x, b.y-e.y) < e.size) { e.hp -= b.dmg; b.y = -100; }
     });
-    if(boss.hp<=0){boss=null;enemyBullets=[];score+=3000;}
+    if(boss && Math.hypot(b.x-boss.x, b.y-boss.y) < boss.r) { boss.hp -= b.dmg; b.y = -100; }
+    return b.y > 0;
+  });
+
+  enemies = enemies.filter(e => {
+    if(e.type === "fast") e.y += e.speed;
+    else if(e.type === "chaser") { e.y += e.speed; e.x += (player.x - e.x) * 0.02; }
+    else { e.y += e.speed; e.x += Math.sin(e.angle += 0.1) * 4; }
+
+    if(Math.hypot(e.x-player.x, e.y-player.y) < player.r + e.size) { player.hp -= 5; return false; }
+    if(e.hp <= 0) { score += 100; return false; }
+    return e.y < c.height + 50;
+  });
+
+  // 4. 보스 업데이트
+  if(boss) {
+    boss.x += Math.sin(Date.now()*0.002) * 3;
+    boss.cd--;
+    if(boss.cd <= 0) {
+      for(let i=0; i<8; i++) {
+        let a = i * Math.PI / 4;
+        enemyBullets.push({x:boss.x, y:boss.y, vx:Math.cos(a)*4, vy:Math.sin(a)*4});
+      }
+      boss.cd = 60;
+    }
+    if(boss.hp <= 0) { boss=null; score+=3000; }
   }
 
-  enemyBullets=enemyBullets.filter(b=>{
-    b.x+=b.vx;b.y+=b.vy;
-    if(Math.hypot(b.x-player.x,b.y-player.y)<player.r){
-      player.shield>0?player.shield-=10:player.hp-=10;
+  enemyBullets = enemyBullets.filter(eb => {
+    eb.x += eb.vx; eb.y += eb.vy;
+    if(Math.hypot(eb.x-player.x, eb.y-player.y) < player.r) {
+      player.shield > 0 ? player.shield -= 5 : player.hp -= 5;
       return false;
     }
-    return b.x>0&&b.x<c.width&&b.y>0&&b.y<c.height;
+    return eb.y > 0 && eb.y < c.height && eb.x > 0 && eb.x < c.width;
   });
 
-  items=items.filter(it=>{
-    it.y+=it.v;
-    if(Math.hypot(it.x-player.x,it.y-player.y)<player.r+it.r){
-      if(it.type==="power"){player.power=Math.min(3,player.power+1);player.powerTimer=1800;}
-      if(it.type==="shield"){player.shield=player.hp;player.shieldTimer=1800;}
-      if(it.type==="bomb"){flashTimer=15;enemies=[];enemyBullets=[];if(boss)boss.hp-=1000;}
-      return false;
-    }
-    return it.y<c.height;
-  });
+  // 5. 그리기
+  if(flashTimer > 0) { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fillRect(0,0,c.width,c.height); }
 
-  if(flashTimer>0){
-    ctx.fillStyle="rgba(255,255,255,0.4)";
-    ctx.fillRect(0,0,c.width,c.height);
-  }
-
-  // === RENDER IMAGES ===
-  
-  // Player
-  if(imgPlayer.complete) {
-      ctx.drawImage(imgPlayer, player.x-player.r, player.y-player.r, player.r*2, player.r*2);
+  // Player 그리기 (이미지 실패 시 도형)
+  if(imgPlayer.complete && imgPlayer.width > 0) {
+    ctx.drawImage(imgPlayer, player.x-25, player.y-25, 50, 50);
   } else {
-      ctx.fillStyle="#0af"; ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle = "#0af"; ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
   }
+  if(player.shield > 0) { ctx.strokeStyle="#0ff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(player.x, player.y, player.r+10, 0, Math.PI*2); ctx.stroke(); }
 
-  // Shield
-  if(player.shield>0){
-    ctx.strokeStyle="cyan";
-    ctx.lineWidth = 2;
-    ctx.beginPath();ctx.arc(player.x,player.y,player.r+10,0,Math.PI*2);ctx.stroke();
-  }
-
-  // Bullets
-  ctx.fillStyle="#fff";
-  bullets.forEach(b=>{ctx.fillRect(b.x-2, b.y, 4, 10)}); // 총알을 길쭉하게
-
-  // Enemies
-  enemies.forEach(e=>{
-    if(imgEnemy.complete) {
-        ctx.drawImage(imgEnemy, e.x-e.size, e.y-e.size, e.size*2, e.size*2);
+  // 적 그리기
+  enemies.forEach(e => {
+    if(imgEnemy.complete && imgEnemy.width > 0) {
+      ctx.drawImage(imgEnemy, e.x-e.size, e.y-e.size, e.size*2, e.size*2);
     } else {
-        ctx.fillStyle="#f44"; ctx.beginPath(); ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle = "#f33"; ctx.beginPath(); ctx.moveTo(e.x, e.y+e.size); ctx.lineTo(e.x-e.size, e.y-e.size); ctx.lineTo(e.x+e.size, e.y-e.size); ctx.fill();
     }
   });
 
-  // Enemy Bullets
-  ctx.fillStyle="#fa0";
-  enemyBullets.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,5,0,Math.PI*2);ctx.fill()});
-
-  // Items
-  items.forEach(it=>{
-    ctx.fillStyle=it.type==="power"?"#4af":it.type==="shield"?"#4f4":"#f44";
-    ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#000"; ctx.font="12px Arial"; ctx.fillText(it.type[0].toUpperCase(), it.x-4, it.y+4);
-  });
-
-  // Boss
-  if(boss){
-    if(imgBoss.complete){
-        ctx.drawImage(imgBoss, boss.x-boss.r, boss.y-boss.r, boss.r*2, boss.r*2);
+  // 보스 그리기
+  if(boss) {
+    if(imgBoss.complete && imgBoss.width > 0) {
+      ctx.drawImage(imgBoss, boss.x-boss.r, boss.y-boss.r, boss.r*2, boss.r*2);
     } else {
-        ctx.fillStyle="#f0f"; ctx.beginPath();ctx.arc(boss.x,boss.y,boss.r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle = "#f0f"; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r, 0, Math.PI*2); ctx.fill();
     }
-    // Boss HP Bar
-    ctx.fillStyle="#400";ctx.fillRect(20,20,c.width-40,10);
-    ctx.fillStyle="#f00";ctx.fillRect(20,20,(c.width-40)*(boss.hp/boss.maxHp),10);
+    ctx.fillStyle="#400"; ctx.fillRect(20,20,c.width-40,8);
+    ctx.fillStyle="#f00"; ctx.fillRect(20,20,(c.width-40)*(boss.hp/5000),8);
   }
+
+  // 투사체
+  ctx.fillStyle="#fff"; bullets.forEach(b=>ctx.fillRect(b.x-2, b.y, 4, 12));
+  ctx.fillStyle="#fa0"; enemyBullets.forEach(eb=>ctx.beginPath()||ctx.arc(eb.x,eb.y,4,0,Math.PI*2)||ctx.fill());
 
   // UI
-  ctx.fillStyle="#fff";
-  ctx.font="bold 20px 'Orbitron'";
-  ctx.fillText("SCORE: "+score,20,c.height-20);
-  ctx.fillText("HP: "+player.hp,c.width-120,c.height-20);
+  ctx.fillStyle="#fff"; ctx.font="16px 'Orbitron'";
+  ctx.fillText(`SCORE: ${score}`, 20, c.height-30);
+  ctx.fillText(`HP: ${player.hp}`, c.width-100, c.height-30);
+
+  if(player.hp <= 0) { alert("GAME OVER! SCORE: " + score); location.reload(); }
 
   requestAnimationFrame(loop);
 }
