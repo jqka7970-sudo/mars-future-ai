@@ -19,10 +19,10 @@ canvas{display:block;touch-action:none}
 @keyframes pulse { from { opacity: 0.8; transform: scale(0.98); } to { opacity: 1; transform: scale(1.02); } }
 #gameStart{
   font-size: 24px; padding: 15px 50px; background: none; border: 2px solid #ff3333; color: #ff3333;
-  cursor: pointer; letter-spacing: 2px; transition: 0.3s;
+  cursor: pointer; letter-spacing: 2px; transition: 0.3s; font-family: 'Orbitron';
 }
 #gameStart:hover{ background: #ff3333; color: #000; box-shadow: 0 0 30px #f00; }
-#bgmBtn{ margin-top: 20px; font-size: 12px; color: #555; cursor: pointer; }
+#bgmBtn{ margin-top: 20px; font-size: 12px; color: #666; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -41,16 +41,11 @@ const ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 addEventListener("resize",resize);resize();
 
-/* ================= ASSETS (외부 이미지) ================= */
-const imgPlayer = new Image(); imgPlayer.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/playerShip1_blue.png";
-const imgEnemy = new Image(); imgEnemy.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyBlack1.png";
-const imgBoss = new Image(); imgBoss.src = "https://raw.githubusercontent.com/KenneyNL/assets/master/Space%20Shooter%20Redux/PNG/Enemies/enemyRed5.png";
-
 /* ================= STATE ================= */
 let gameRunning=false, score=0, nextBossScore=10000, flashTimer=0;
-const player={ x:c.width/2, y:c.height*0.8, r:18, hp:100, shield:0, shieldTimer:0, power:1, powerTimer:0 };
+const player={ x:c.width/2, y:c.height*0.8, r:15, hp:100, shield:0, shieldTimer:0, power:1, powerTimer:0 };
 let bullets=[], enemies=[], enemyBullets=[], items=[];
-let bgStars = Array.from({length: 100}, () => ({x: Math.random()*c.width, y: Math.random()*c.height, s: Math.random()*2+1}));
+let bgStars = Array.from({length: 80}, () => ({x: Math.random()*c.width, y: Math.random()*c.height, s: Math.random()*2+1}));
 
 /* ================= AUDIO ================= */
 const bgm=new Audio("화성.mp3"); bgm.loop=true; bgm.volume=0.5;
@@ -74,24 +69,32 @@ const move = e => {
 c.addEventListener("mousemove", move);
 c.addEventListener("touchmove", e => { move(e); e.preventDefault(); }, {passive:false});
 
-/* ================= GAME LOGIC (적 2배!) ================= */
-setInterval(() => { if(!gameRunning) return; bullets.push({x:player.x, y:player.y-20, v:12, dmg:20}); if(player.power>1) { bullets.push({x:player.x-15, y:player.y, v:12, dmg:20}); bullets.push({x:player.x+15, y:player.y, v:12, dmg:20}); } }, 180);
+/* ================= LOGIC (2배 난이도) ================= */
+setInterval(() => { 
+  if(!gameRunning) return; 
+  // 메인 총알
+  bullets.push({x:player.x, y:player.y-20, v:12, dmg:20}); 
+  // 파워업 시 보조 총알
+  if(player.power>1) { 
+    bullets.push({x:player.x-15, y:player.y, v:12, dmg:20}); 
+    bullets.push({x:player.x+15, y:player.y, v:12, dmg:20}); 
+  } 
+}, 180);
 
 setInterval(() => {
   if(!gameRunning) return;
   const type = Math.random() < 0.3 ? "chaser" : (Math.random() < 0.6 ? "zigzag" : "fast");
-  enemies.push({ x: Math.random()*c.width, y: -30, size: 20, type, hp: 40, speed: type==="fast"?6:3, angle: 0 });
-}, 450); // 900ms -> 450ms로 적 생성 주기 단축
+  enemies.push({ x: Math.random()*c.width, y: -30, size: 18, type, hp: 40, speed: type==="fast"?7:3.5, angle: 0 });
+}, 450); // 적 생성 주기 450ms (2배 물량)
 
 /* ================= BOSS ================= */
 let boss=null;
-function spawnBoss(){ boss={x:c.width/2, y:100, r:60, maxHp:5000, hp:5000, cd:0}; }
+function spawnBoss(){ boss={x:c.width/2, y:100, r:50, maxHp:5000, hp:5000, cd:0}; }
 
 /* ================= LOOP ================= */
 function loop(){
-  // 1. 배경 (별무리 효과)
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0,0,c.width,c.height);
+  // 1. 배경
+  ctx.fillStyle = "#000"; ctx.fillRect(0,0,c.width,c.height);
   ctx.fillStyle = "#fff";
   bgStars.forEach(s => {
     s.y += s.s; if(s.y > c.height) s.y = 0;
@@ -100,10 +103,9 @@ function loop(){
 
   if(!gameRunning) { requestAnimationFrame(loop); return; }
 
-  // 2. 보스 등장 체크
   if(score >= nextBossScore && !boss) { spawnBoss(); nextBossScore += 10000; }
 
-  // 3. 충돌 및 이동 로직
+  // 2. 물리 연산
   if(player.powerTimer > 0) player.powerTimer--; else player.power = 1;
   if(player.shieldTimer > 0) player.shieldTimer--; else player.shield = 0;
   if(flashTimer > 0) flashTimer--;
@@ -119,24 +121,22 @@ function loop(){
 
   enemies = enemies.filter(e => {
     if(e.type === "fast") e.y += e.speed;
-    else if(e.type === "chaser") { e.y += e.speed; e.x += (player.x - e.x) * 0.02; }
-    else { e.y += e.speed; e.x += Math.sin(e.angle += 0.1) * 4; }
+    else if(e.type === "chaser") { e.y += e.speed; e.x += (player.x - e.x) * 0.03; }
+    else { e.y += e.speed; e.x += Math.sin(e.angle += 0.1) * 5; }
 
-    if(Math.hypot(e.x-player.x, e.y-player.y) < player.r + e.size) { player.hp -= 5; return false; }
+    if(Math.hypot(e.x-player.x, e.y-player.y) < player.r + e.size) { player.hp -= 10; return false; }
     if(e.hp <= 0) { score += 100; return false; }
     return e.y < c.height + 50;
   });
 
-  // 4. 보스 업데이트
   if(boss) {
-    boss.x += Math.sin(Date.now()*0.002) * 3;
-    boss.cd--;
+    boss.x += Math.sin(Date.now()*0.002) * 4; boss.cd--;
     if(boss.cd <= 0) {
-      for(let i=0; i<8; i++) {
-        let a = i * Math.PI / 4;
-        enemyBullets.push({x:boss.x, y:boss.y, vx:Math.cos(a)*4, vy:Math.sin(a)*4});
+      for(let i=0; i<10; i++) {
+        let a = i * Math.PI / 5;
+        enemyBullets.push({x:boss.x, y:boss.y, vx:Math.cos(a)*5, vy:Math.sin(a)*5});
       }
-      boss.cd = 60;
+      boss.cd = 50;
     }
     if(boss.hp <= 0) { boss=null; score+=3000; }
   }
@@ -150,51 +150,51 @@ function loop(){
     return eb.y > 0 && eb.y < c.height && eb.x > 0 && eb.x < c.width;
   });
 
-  // 5. 그리기
-  if(flashTimer > 0) { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fillRect(0,0,c.width,c.height); }
-
-  // Player 그리기 (이미지 실패 시 도형)
-  if(imgPlayer.complete && imgPlayer.width > 0) {
-    ctx.drawImage(imgPlayer, player.x-25, player.y-25, 50, 50);
-  } else {
-    ctx.fillStyle = "#0af"; ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
-  }
-  if(player.shield > 0) { ctx.strokeStyle="#0ff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(player.x, player.y, player.r+10, 0, Math.PI*2); ctx.stroke(); }
-
-  // 적 그리기
-  enemies.forEach(e => {
-    if(imgEnemy.complete && imgEnemy.width > 0) {
-      ctx.drawImage(imgEnemy, e.x-e.size, e.y-e.size, e.size*2, e.size*2);
-    } else {
-      ctx.fillStyle = "#f33"; ctx.beginPath(); ctx.moveTo(e.x, e.y+e.size); ctx.lineTo(e.x-e.size, e.y-e.size); ctx.lineTo(e.x+e.size, e.y-e.size); ctx.fill();
+  items = items.filter(it => {
+    it.y += 3;
+    if(Math.hypot(it.x-player.x, it.y-player.y) < player.r + 15) {
+      if(it.type==="power"){ player.power=2; player.powerTimer=600; }
+      if(it.type==="shield"){ player.shield=100; player.shieldTimer=600; }
+      return false;
     }
+    return it.y < c.height;
+  });
+  if(Math.random() < 0.005) items.push({x:Math.random()*c.width, y:-20, type: Math.random()<0.5?"power":"shield"});
+
+  // 3. 그리기 (Canvas 도형)
+  if(flashTimer > 0) { ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(0,0,c.width,c.height); }
+
+  // Player (비행기 모양)
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.fillStyle = "#0af";
+  ctx.beginPath();
+  ctx.moveTo(0, -20); ctx.lineTo(-15, 10); ctx.lineTo(0, 5); ctx.lineTo(15, 10);
+  ctx.closePath(); ctx.fill();
+  if(player.shield > 0) {
+    ctx.strokeStyle="#0ff"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+
+  // 적 (붉은 삼각형)
+  enemies.forEach(e => {
+    ctx.fillStyle = e.type === "chaser" ? "#f0f" : (e.type === "fast" ? "#ff0" : "#f33");
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y+e.size); ctx.lineTo(e.x-e.size, e.y-e.size); ctx.lineTo(e.x+e.size, e.y-e.size);
+    ctx.closePath(); ctx.fill();
   });
 
-  // 보스 그리기
+  // 보스 (기함 모양)
   if(boss) {
-    if(imgBoss.complete && imgBoss.width > 0) {
-      ctx.drawImage(imgBoss, boss.x-boss.r, boss.y-boss.r, boss.r*2, boss.r*2);
-    } else {
-      ctx.fillStyle = "#f0f"; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.fillStyle="#400"; ctx.fillRect(20,20,c.width-40,8);
-    ctx.fillStyle="#f00"; ctx.fillRect(20,20,(c.width-40)*(boss.hp/5000),8);
+    ctx.fillStyle = "#f00";
+    ctx.beginPath();
+    ctx.moveTo(boss.x, boss.y+boss.r); ctx.lineTo(boss.x-boss.r, boss.y-boss.r);
+    ctx.lineTo(boss.x+boss.r, boss.y-boss.r); ctx.closePath(); ctx.fill();
+    // 보스 HP 바
+    ctx.fillStyle="#400"; ctx.fillRect(20,20,c.width-40,10);
+    ctx.fillStyle="#f00"; ctx.fillRect(20,20,(c.width-40)*(boss.hp/5000),10);
   }
 
-  // 투사체
-  ctx.fillStyle="#fff"; bullets.forEach(b=>ctx.fillRect(b.x-2, b.y, 4, 12));
-  ctx.fillStyle="#fa0"; enemyBullets.forEach(eb=>ctx.beginPath()||ctx.arc(eb.x,eb.y,4,0,Math.PI*2)||ctx.fill());
-
-  // UI
-  ctx.fillStyle="#fff"; ctx.font="16px 'Orbitron'";
-  ctx.fillText(`SCORE: ${score}`, 20, c.height-30);
-  ctx.fillText(`HP: ${player.hp}`, c.width-100, c.height-30);
-
-  if(player.hp <= 0) { alert("GAME OVER! SCORE: " + score); location.reload(); }
-
-  requestAnimationFrame(loop);
-}
-loop();
-</script>
-</body>
-</html>
+  // 총알 및 아이템
+  ctx.fillStyle="#fff"; bullets.forEach(b=>ctx.fillRect(b.x-2, b.y, 4, 15));
+  ctx.fillStyle="#f00"; enemyBullets.forEach(eb=>{ctx.beginPath();ctx.arc(eb.x,eb.y,
