@@ -2,123 +2,112 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>MARS FUTURE AI - BOSS BATTLE</title>
+<title>MARS FUTURE AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
 
 <style>
-:root { --mars:#ff3333; --ui-gold:#ffcc00; --boss-hp:#ff0044; }
-html,body{margin:0;padding:0;width:100%;height:100%;background:#000;color:#fff;font-family:'Orbitron',sans-serif;overflow:hidden;}
-.bg-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,#1a0505,#3d0e0e,#1a0505);opacity:.8;z-index:0;}
-#ui-layer{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
-h1{font-size:5rem;color:var(--mars);letter-spacing:10px;margin-bottom:40px;filter:drop-shadow(0 0 10px rgba(255,0,0,.5));}
-#start-btn{padding:15px 40px;font-size:1.5rem;background:transparent;color:#fff;border:3px solid var(--mars);cursor:pointer;}
-#start-btn:hover{background:var(--mars);color:#000;}
-#sound-ctrl{margin-top:25px;background:none;border:1px solid #444;color:#aaa;cursor:pointer;}
-canvas{display:none;background:#0a0000;margin:0 auto;cursor:none;border:2px solid #331111;}
-#hud{position:absolute;top:10px;width:100%;display:none;justify-content:space-around;color:var(--ui-gold);z-index:20;}
-#boss-ui{position:absolute;top:50px;left:50%;transform:translateX(-50%);width:300px;height:10px;border:1px solid #fff;display:none;}
-#boss-hp-bar{width:100%;height:100%;background:var(--boss-hp);}
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  font-family: 'Orbitron', sans-serif;
+  overflow: hidden;
+  color: #ff3333;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+      to bottom,
+      #1a0505 0%,
+      #3d0e0e 50%,
+      #1a0505 100%
+  );
+}
+
+.center {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+h1 {
+  font-size: 4.5rem;
+  letter-spacing: 10px;
+  margin: 0;
+  filter: drop-shadow(0 0 15px rgba(255,0,0,0.6));
+}
+
+.sub {
+  margin-top: 20px;
+  font-size: 1rem;
+  letter-spacing: 4px;
+  color: #ff7777;
+}
+
+.sound-btn {
+  margin-top: 40px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid #ff3333;
+  color: #ff3333;
+  cursor: pointer;
+}
+.sound-btn:hover {
+  background: #ff3333;
+  color: black;
+}
 </style>
 </head>
 
 <body>
 
-<div class="bg-overlay"></div>
+<div class="bg"></div>
 
-<div id="hud">
-  <span>SCORE: <span id="score">0</span></span>
-  <span>LIVES: <span id="lives">3</span></span>
-</div>
-
-<div id="boss-ui"><div id="boss-hp-bar"></div></div>
-
-<!-- START PAGE -->
-<div id="ui-layer">
+<div class="center">
   <h1>MARS<br>FUTURE AI</h1>
-  <button id="start-btn">START GAME</button>
-  <button id="sound-ctrl">🎵 SOUND: OFF</button>
+  <div class="sub">RED PLANET SIGNAL ONLINE</div>
+  <button class="sound-btn" id="soundBtn">🔊 SOUND ON</button>
 </div>
 
-<!-- GAME -->
-<canvas id="gameCanvas"></canvas>
-
-<!-- BGM -->
 <audio id="bgm" src="mars.mp3" loop preload="auto"></audio>
 
 <script>
-/* ===== 기존 게임 변수 (변경 없음) ===== */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const uiLayer = document.getElementById('ui-layer');
-const hud = document.getElementById('hud');
-const bossUi = document.getElementById('boss-ui');
-const bossHpBar = document.getElementById('boss-hp-bar');
+const bgm = document.getElementById("bgm");
+const btn = document.getElementById("soundBtn");
 
-let gameActive=false, score=0, lives=3, frame=0;
-let powerLevel=1, powerTimer=0;
-const player={x:0,y:0};
-let bullets=[], enemies=[], enemyBullets=[], items=[], explosions=[];
-let boss={active:false,x:240,y:-100,hp:100,maxHp:100,dir:1};
+let playing = false;
 
-/* ===== 🔊 사운드 추가 부분 ===== */
-const bgm = document.getElementById('bgm');
-const soundBtn = document.getElementById('sound-ctrl');
-let soundEnabled = false;
-let soundUnlocked = false;
-
-// 시작 페이지 사운드 ON/OFF (모바일 unlock)
-soundBtn.onclick = () => {
-  soundEnabled = !soundEnabled;
-
-  if (!soundUnlocked) {
-    bgm.volume = 0;
-    bgm.play().then(() => {
-      bgm.pause();
-      bgm.currentTime = 0;
-      soundUnlocked = true;
-    });
-  }
-
-  soundBtn.innerText = soundEnabled ? "🎵 SOUND: ON" : "🎵 SOUND: OFF";
-};
-
-/* ===== START GAME (사운드 재생만 추가) ===== */
-document.getElementById('start-btn').onclick = () => {
-  uiLayer.style.display='none';
-  hud.style.display='flex';
-  canvas.style.display='block';
-  canvas.width=480;
-  canvas.height=window.innerHeight;
-  player.x=canvas.width/2;
-  player.y=canvas.height-80;
-  gameActive=true;
-
-  if (soundEnabled) {
+// 모바일 대응: 첫 터치에서 재생
+btn.addEventListener("click", () => {
+  if (!playing) {
     bgm.volume = 0.6;
     bgm.play();
+    btn.innerText = "🔇 SOUND OFF";
+  } else {
+    bgm.pause();
+    btn.innerText = "🔊 SOUND ON";
   }
+  playing = !playing;
+});
 
-  update();
-};
-
-/* ===== 이하 게임 로직: 원본 그대로 ===== */
-window.onmousemove=e=>{
-  if(!gameActive) return;
-  const r=canvas.getBoundingClientRect();
-  player.x=e.clientX-r.left;
-  player.y=e.clientY-r.top;
-};
-
-function update(){
-  if(!gameActive) return;
-  frame++;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // (중략)
-  // 🔴 여기 아래는 네가 올린 게임 코드 그대로라고 가정
-  // 🔴 보스 / 탄막 / 충돌 / 점수 로직 전부 동일
-  requestAnimationFrame(update);
-}
+// 페이지 로드 후 자동 시도 (PC에서는 바로 됨)
+window.addEventListener("load", () => {
+  bgm.volume = 0.6;
+  bgm.play().then(() => {
+    playing = true;
+    btn.innerText = "🔇 SOUND OFF";
+  }).catch(() => {
+    // 모바일은 버튼 클릭 기다림
+  });
+});
 </script>
 
 </body>
