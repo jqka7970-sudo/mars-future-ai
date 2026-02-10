@@ -3,279 +3,352 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mars Shooter</title>
+<title>MARS FUTURE AI</title>
+
 <style>
 html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#000;
+  margin:0; width:100%; height:100%;
+  overflow:hidden; background:#000;
 }
 canvas{display:block}
-#hud{
-  position:fixed;
-  top:10px;
-  left:10px;
-  color:#0ff;
+
+/* ===== MENU ===== */
+#menu{
+  position:fixed; inset:0;
+  background:#000;
+  z-index:10;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+}
+#title{
+  position:absolute; top:60px;
+  text-align:center;
+  font-family:Orbitron,sans-serif;
+  color:#6b0000;
+  font-size:64px;
+  text-shadow:0 0 20px #300;
+}
+#startBtn{
+  font-family:'Press Start 2P', monospace;
+  font-size:24px;
+  color:#fff;
+  border:3px solid #fff;
+  padding:20px 40px;
+  cursor:pointer;
+}
+#startBtn:hover{ animation: blink .15s infinite; }
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:.3}
+}
+#bgmBtn{
+  position:absolute;
+  right:20px; bottom:20px;
+  color:#aaa;
   font-family:monospace;
-  font-size:14px;
+  cursor:pointer;
+}
+
+/* ===== HUD ===== */
+#hud{
+  position:fixed; top:10px; left:10px;
+  font-family:monospace;
+  font-size:13px;
+  color:#0ff;
   background:rgba(0,0,0,.5);
-  padding:6px 10px;
+  padding:8px;
   border-radius:4px;
+}
+#psycheHud,#aiHud{
+  font-size:11px;
+  opacity:.6;
+}
+
+/* ===== WARNING ===== */
+#warning{
+  position:fixed; inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  font-size:64px;
+  color:#f00;
+  background:rgba(0,0,0,.7);
+  z-index:20;
+  animation: blink .2s infinite;
+}
+
+/* ===== REPORT ===== */
+#report{
+  position:fixed; inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.85);
+  z-index:30;
+}
+#reportBox{
+  color:#fff;
+  font-family:monospace;
+  max-width:500px;
+  line-height:1.8;
 }
 </style>
 </head>
+
 <body>
 
-<div id="hud">
-CH <span id="ch">1</span> |
-SCORE <span id="score">0</span> |
-HP <span id="hp">100</span>
+<div id="menu">
+  <div id="title">
+    <div>MARS</div>
+    <div>FUTURE</div>
+    <div>AI</div>
+  </div>
+  <div id="startBtn">GAME START</div>
+  <div id="bgmBtn">BGM : OFF</div>
 </div>
 
-<canvas id="game"></canvas>
+<div id="hud">
+  SCORE <span id="score">0</span><br>
+  HP <span id="hp">100</span><br>
+  <div id="psycheHud">STATE : ---</div>
+  <div id="aiHud">AI ADAPT : 0%</div>
+</div>
+
+<div id="warning">WARNING</div>
+
+<div id="report">
+  <div id="reportBox"></div>
+</div>
+
+<canvas id="c"></canvas>
 
 <script>
-/* ================= 기본 ================= */
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-}
-resize();
-addEventListener('resize', resize);
+/* ================= BASIC ================= */
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+function resize(){ c.width=innerWidth; c.height=innerHeight; }
+resize(); addEventListener('resize',resize);
 
-/* ================= 이미지 ================= */
+/* ================= ASSETS ================= */
 const IMG = {};
 [
-  'bg_mars1','bg_mars2',
-  'player',
-  'enemy_straight','enemy_zigzag','enemy_sniper',
-  'boss1','boss2','boss3',
-  'item_bullets','item_shield','item_bomb'
+ 'bg_mars1','bg_mars2','player',
+ 'enemy_straight','enemy_zigzag','enemy_sniper',
+ 'boss1','boss2','boss3',
+ 'item_bullets','item_shield','item_bomb'
 ].forEach(k=>{
-  IMG[k] = new Image();
-  IMG[k].src = `assets/${k}.png`;
+  IMG[k]=new Image();
+  IMG[k].src='assets/'+k+'.png';
 });
 
-/* ================= 배경 ================= */
-let bgY = 0;
-let bgIndex = 0;
-const BG_LIST = ['bg_mars1','bg_mars2'];
-const bgSpeed = 1.4;
-
-function drawBackground(){
-  bgY += bgSpeed;
-  if(bgY >= canvas.height){
-    bgY = 0;
-    bgIndex = (bgIndex + 1) % BG_LIST.length;
-  }
-  const cur = IMG[BG_LIST[bgIndex]];
-  const next = IMG[BG_LIST[(bgIndex+1)%BG_LIST.length]];
-  ctx.drawImage(cur, 0, bgY - canvas.height, canvas.width, canvas.height);
-  ctx.drawImage(next, 0, bgY, canvas.width, canvas.height);
-}
-
-/* ================= 게임 상태 ================= */
-let chapter = 1;
-let score = 0;
-let hp = 100;
-
-const player = {
-  x: canvas.width/2,
-  y: canvas.height - 120,
-  power: 1,
-  bulletTimer: 0,
-  shield: 0,
-  shieldTimer: 0
+/* ================= MENU ================= */
+let gameActive=false;
+document.getElementById('startBtn').onclick=()=>{
+  document.getElementById('menu').style.display='none';
+  gameActive=true;
 };
 
-let bullets = [];
-let enemies = [];
-let items = [];
-let boss = null;
+/* ================= GAME STATE ================= */
+let score=0, hp=100;
+let bullets=[], enemies=[], bossBullets=[], items=[];
+let boss=null, inBossIntro=false, introTimer=0;
 
-/* ================= 입력 ================= */
-addEventListener('mousemove', e=>{
-  player.x = e.clientX;
-  player.y = e.clientY;
+const player={
+  x:c.width/2, y:c.height-120,
+  power:1, bulletTimer:0,
+  shield:0, shieldTimer:0
+};
+
+/* ================= PSYCHE ================= */
+const psyche={ move:0, shoot:0, near:0 };
+function analyzePsyche(){
+  if(psyche.shoot > psyche.move*2) return 'AGGRESSIVE';
+  if(psyche.move > psyche.shoot*2) return 'PANIC';
+  if(psyche.near < 3) return 'TUNNEL';
+  return 'BALANCED';
+}
+
+/* ================= AI ADAPT ================= */
+let aiAdapt=0;
+let currentState='BALANCED';
+let stateTimer=0;
+
+/* ================= INPUT ================= */
+addEventListener('mousemove',e=>{
+  player.x=e.clientX; player.y=e.clientY;
+  psyche.move++;
 });
-addEventListener('touchmove', e=>{
-  player.x = e.touches[0].clientX;
-  player.y = e.touches[0].clientY;
-  e.preventDefault();
-},{passive:false});
 
-/* ================= 아이템 드랍 ================= */
-function tryDropItem(x,y){
-  if(Math.random() > 0.02) return;
-  const r = Math.random();
-  let type = 'item_bullets';
-  if(r > 0.9) type = 'item_bomb';
-  else if(r > 0.45) type = 'item_shield';
-  items.push({x,y,type});
+/* ================= BACKGROUND ================= */
+let bgY=0, bgIdx=0;
+const BG=['bg_mars1','bg_mars2'];
+function drawBG(){
+  bgY+=1.5;
+  if(bgY>c.height){ bgY=0; bgIdx=(bgIdx+1)%2; }
+  ctx.drawImage(IMG[BG[bgIdx]],0,bgY-c.height,c.width,c.height);
+  ctx.drawImage(IMG[BG[(bgIdx+1)%2]],0,bgY,c.width,c.height);
 }
 
-/* ================= 적 생성 ================= */
+/* ================= SPAWN ================= */
 function spawnEnemy(){
-  let type = 'enemy_straight';
-  const r = Math.random();
-  if(r > 0.66) type = 'enemy_sniper';
-  else if(r > 0.33) type = 'enemy_zigzag';
-
-  enemies.push({
-    x: Math.random()*canvas.width,
-    y: -60,
-    type,
-    t: 0,
-    speed: 2 + chapter
-  });
+  const r=Math.random();
+  let t='enemy_straight';
+  if(r>0.7) t='enemy_zigzag';
+  if(r>0.9) t='enemy_sniper';
+  enemies.push({x:Math.random()*c.width,y:-50,type:t,tick:0});
+}
+function tryDrop(x,y){
+  if(Math.random()>0.02) return;
+  const r=Math.random();
+  let t='item_bullets';
+  if(r>0.9) t='item_bomb';
+  else if(r>0.45) t='item_shield';
+  items.push({x,y,type:t});
 }
 
-/* ================= 보스 ================= */
+/* ================= BOSS ================= */
+function startBossIntro(){
+  inBossIntro=true;
+  introTimer=3000;
+  document.getElementById('warning').style.display='flex';
+}
 function spawnBoss(){
-  boss = {
-    x: canvas.width/2,
-    y: 120,
-    hp: 600 * chapter,
-    img: IMG[`boss${chapter}`]
+  boss={
+    x:c.width/2,y:120,
+    hp:800+aiAdapt*5,
+    img:IMG['boss'+(1+Math.floor(Math.random()*3))],
+    atk:0
   };
 }
+function bossAttack(d){
+  boss.atk+=d;
+  const rate=Math.max(200,900-aiAdapt*6);
+  if(boss.atk<rate) return;
+  boss.atk=0;
 
-/* ================= 루프 ================= */
-let last = 0;
+  if(currentState==='AGGRESSIVE'){
+    for(let a=-2;a<=2;a++)
+      bossBullets.push({x:boss.x,y:boss.y,vx:a*2,vy:4});
+  }
+  else if(currentState==='PANIC'){
+    const dx=player.x-boss.x,dy=player.y-boss.y;
+    const l=Math.hypot(dx,dy);
+    for(let i=-1;i<=1;i++)
+      bossBullets.push({x:boss.x,y:boss.y,
+        vx:(dx/l)*4+i*1.5,vy:(dy/l)*4});
+  }
+  else if(currentState==='TUNNEL'){
+    bossBullets.push({x:0,y:boss.y,vx:4,vy:0});
+    bossBullets.push({x:c.width,y:boss.y,vx:-4,vy:0});
+  }
+  else{
+    for(let a=-1;a<=1;a++)
+      bossBullets.push({x:boss.x,y:boss.y,vx:a*1.5,vy:4});
+  }
+}
+
+/* ================= DEATH REPORT ================= */
+function showReport(){
+  const s=analyzePsyche();
+  document.getElementById('reportBox').innerHTML=`
+    <h2>AI ANALYSIS</h2>
+    <p>Final Score : ${score}</p>
+    <p>Playstyle : ${s}</p>
+    <p>The AI adapted to your behavior.</p>
+    <p>Press F5 to retry.</p>`;
+  document.getElementById('report').style.display='flex';
+}
+
+/* ================= LOOP ================= */
+let last=0;
 function loop(t){
-  const d = t - last;
-  last = t;
+  requestAnimationFrame(loop);
+  if(!gameActive) return;
+  const d=t-last; last=t;
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,c.width,c.height);
+  drawBG();
 
-  drawBackground();
-
-  /* 타이머 */
-  if(player.power > 1){
-    player.bulletTimer -= d;
-    if(player.bulletTimer <= 0) player.power = 1;
+  aiAdapt=Math.min(100,aiAdapt+d*0.002);
+  stateTimer+=d;
+  if(stateTimer>1500){
+    stateTimer=0;
+    currentState=analyzePsyche();
+    document.getElementById('psycheHud').innerText='STATE : '+currentState;
   }
-  if(player.shield > 0){
-    player.shieldTimer -= d;
-    if(player.shieldTimer <= 0) player.shield = 0;
+  document.getElementById('aiHud').innerText='AI ADAPT : '+Math.floor(aiAdapt)+'%';
+
+  if(!boss && !inBossIntro && score>2000) startBossIntro();
+  if(inBossIntro){
+    introTimer-=d;
+    if(introTimer<=0){
+      inBossIntro=false;
+      document.getElementById('warning').style.display='none';
+      spawnBoss();
+    }
+    return;
   }
 
-  /* 총알 */
-  bullets = bullets.filter(b=>{
-    b.y -= 12;
-    ctx.fillStyle = '#0ff';
+  if(!boss && Math.random()<0.03) spawnEnemy();
+
+  /* bullets */
+  if(Math.random()<0.15){
+    for(let i=0;i<player.power;i++)
+      bullets.push({x:player.x+(i-(player.power-1)/2)*12,y:player.y});
+    psyche.shoot++;
+  }
+  bullets=bullets.filter(b=>{
+    b.y-=12;
+    ctx.fillStyle='#0ff';
     ctx.fillRect(b.x-2,b.y-10,4,10);
-    return b.y > -20;
+    return b.y>-20;
   });
 
-  /* 자동 발사 */
-  if(Math.random() < 0.15){
-    for(let i=0;i<player.power;i++){
-      bullets.push({
-        x: player.x + (i-(player.power-1)/2)*12,
-        y: player.y
-      });
-    }
-  }
-
-  /* 적 */
-  if(!boss && Math.random() < 0.03) spawnEnemy();
-
-  enemies = enemies.filter(e=>{
-    e.t++;
-    if(e.type === 'enemy_straight') e.y += e.speed;
-    if(e.type === 'enemy_zigzag'){
-      e.y += e.speed;
-      e.x += Math.sin(e.t*0.1)*4;
-    }
-    if(e.type === 'enemy_sniper') e.y += e.speed*1.5;
-
-    ctx.drawImage(IMG[e.type], e.x-24, e.y-24, 48, 48);
+  /* enemies */
+  enemies=enemies.filter(e=>{
+    e.tick++;
+    if(e.type==='enemy_straight') e.y+=3;
+    if(e.type==='enemy_zigzag'){ e.y+=2; e.x+=Math.sin(e.tick*0.1)*4; }
+    if(e.type==='enemy_sniper') e.y+=4;
+    ctx.drawImage(IMG[e.type],e.x-24,e.y-24,48,48);
 
     for(let i=bullets.length-1;i>=0;i--){
-      if(Math.hypot(bullets[i].x-e.x, bullets[i].y-e.y) < 26){
+      if(Math.hypot(bullets[i].x-e.x,bullets[i].y-e.y)<26){
         bullets.splice(i,1);
-        score += 100;
-        tryDropItem(e.x,e.y);
+        score+=100;
+        tryDrop(e.x,e.y);
         return false;
       }
     }
-
-    if(Math.hypot(player.x-e.x, player.y-e.y) < 30){
-      if(player.shield > 0){
-        player.shield -= 20;
-      } else {
-        hp -= 20;
-        if(hp <= 0){
-          alert('GAME OVER');
-          location.reload();
-        }
-      }
-      return false;
-    }
-    return e.y < canvas.height+60;
+    return e.y<c.height+60;
   });
 
-  /* 아이템 */
-  items = items.filter(it=>{
-    it.y += 2;
-    ctx.drawImage(IMG[it.type], it.x-18, it.y-18, 36, 36);
-    if(Math.hypot(player.x-it.x, player.y-it.y) < 30){
-      if(it.type === 'item_bullets'){
-        player.power = Math.min(3, player.power+1);
-        player.bulletTimer = 20000;
-      }
-      if(it.type === 'item_shield'){
-        player.shield = hp;
-        player.shieldTimer = 30000;
-      }
-      if(it.type === 'item_bomb'){
-        enemies.forEach(()=>score+=100);
-        enemies = [];
-      }
-      return false;
-    }
-    return it.y < canvas.height+40;
-  });
-
-  /* 보스 */
-  if(score > chapter*2500 && !boss){
-    spawnBoss();
-  }
-
+  /* boss */
   if(boss){
-    ctx.drawImage(boss.img, boss.x-96, boss.y-64, 192, 128);
-    bullets.forEach((b,i)=>{
-      if(Math.hypot(b.x-boss.x, b.y-boss.y) < 90){
-        bullets.splice(i,1);
-        boss.hp -= 10;
-      }
-    });
-    if(boss.hp <= 0){
-      chapter++;
-      boss = null;
-      if(chapter > 3){
-        alert('MISSION COMPLETE');
-        location.reload();
-      }
-    }
+    ctx.drawImage(boss.img,boss.x-96,boss.y-64,192,128);
+    bossAttack(d);
   }
 
-  /* 플레이어 */
-  ctx.drawImage(IMG.player, player.x-32, player.y-32, 64, 64);
+  bossBullets=bossBullets.filter(b=>{
+    b.x+=b.vx; b.y+=b.vy;
+    ctx.fillStyle='red';
+    ctx.fillRect(b.x-3,b.y-3,6,6);
+    if(Math.hypot(player.x-b.x,player.y-b.y)<20){
+      hp-=20;
+      if(hp<=0){ showReport(); gameActive=false; }
+      return false;
+    }
+    return b.x>-20&&b.x<c.width+20&&b.y>-20&&b.y<c.height+20;
+  });
 
-  /* HUD */
-  document.getElementById('score').innerText = score;
-  document.getElementById('hp').innerText = hp;
-  document.getElementById('ch').innerText = chapter;
+  /* player */
+  ctx.drawImage(IMG.player,player.x-32,player.y-32,64,64);
 
-  requestAnimationFrame(loop);
+  document.getElementById('score').innerText=score;
+  document.getElementById('hp').innerText=hp;
 }
-
 requestAnimationFrame(loop);
 </script>
 </body>
