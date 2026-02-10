@@ -3,198 +3,206 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>MARS FUTURE AI : RED PLANET</title>
+<title>MARS FUTURE AI : DEBUG</title>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-html,body{ margin:0;padding:0;overflow:hidden; background:#000; font-family:'Orbitron', sans-serif; }
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+  font-family:'Orbitron', sans-serif;
+}
 canvas{display:block;touch-action:none}
 #startScreen{
-  position:fixed;inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  background:radial-gradient(circle at center, #2b0000 0%, #000 100%); z-index:10; color:#fff;
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:radial-gradient(circle at center, #2b0000 0%, #000 100%);
+  z-index:10;
+  color:#fff;
 }
 #title{
-  font-size: clamp(40px, 8vw, 80px); font-weight: 900; color: #ff3333; text-align: center;
-  text-shadow: 0 0 20px #f00; margin-bottom: 40px; line-height: 1.1; animation: pulse 1.5s infinite alternate;
+  font-size: clamp(40px, 8vw, 80px);
+  font-weight: 900;
+  color:#ff3333;
+  text-shadow:0 0 20px #f00;
+  margin-bottom:40px;
 }
-@keyframes pulse { from { opacity: 0.8; transform: scale(0.98); } to { opacity: 1; transform: scale(1.02); } }
 #gameStart{
-  font-size: 24px; padding: 15px 50px; background: none; border: 2px solid #ff3333; color: #ff3333;
-  cursor: pointer; letter-spacing: 2px; transition: 0.3s; font-family: 'Orbitron';
+  font-size:24px;
+  padding:15px 50px;
+  background:none;
+  border:2px solid #ff3333;
+  color:#ff3333;
+  cursor:pointer;
 }
-#gameStart:hover{ background: #ff3333; color: #000; box-shadow: 0 0 30px #f00; }
-#bgmBtn{ margin-top: 20px; font-size: 12px; color: #666; cursor: pointer; }
+#gameStart:hover{
+  background:#ff3333;
+  color:#000;
+}
+#debug{
+  position:fixed;
+  left:10px;
+  bottom:10px;
+  color:#0f0;
+  font-size:12px;
+  opacity:0.8;
+}
 </style>
 </head>
+
 <body>
 
 <div id="startScreen">
   <div id="title">MARS<br>FUTURE AI</div>
   <div id="gameStart">MISSION START</div>
-  <div id="bgmBtn">SOUND : OFF</div>
 </div>
 
 <canvas id="c"></canvas>
+<div id="debug">DEBUG READY</div>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-function resize(){c.width=innerWidth;c.height=innerHeight}
-addEventListener("resize",resize);resize();
+"use strict";
+
+/* ================= BASIC ================= */
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const debugEl = document.getElementById("debug");
+
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
 
 /* ================= STATE ================= */
-let gameRunning=false, score=0, nextBossScore=10000, flashTimer=0;
-const player={ x:c.width/2, y:c.height*0.8, r:15, hp:100, shield:0, shieldTimer:0, power:1, powerTimer:0 };
-let bullets=[], enemies=[], enemyBullets=[], items=[];
-let bgStars = Array.from({length: 80}, () => ({x: Math.random()*c.width, y: Math.random()*c.height, s: Math.random()*2+1}));
+let gameRunning = false;
+let score = 0;
+let nextBossScore = 10000;
 
-/* ================= AUDIO ================= */
-const bgm=new Audio("화성.mp3"); bgm.loop=true; bgm.volume=0.5;
-let bgmEnabled=false;
-document.getElementById("gameStart").onclick=()=>{
-  document.getElementById("startScreen").style.display="none";
-  gameRunning=true;
-  if(bgmEnabled) bgm.play().catch(()=>{});
+const player = {
+  x: c.width/2,
+  y: c.height*0.8,
+  r: 15,
+  hp: 100,
+  shield: 0,
+  shieldTimer: 0,
+  power: 1,
+  powerTimer: 0
 };
-document.getElementById("bgmBtn").onclick=()=>{
-  bgmEnabled=!bgmEnabled;
-  document.getElementById("bgmBtn").innerText=bgmEnabled?"SOUND : ON":"SOUND : OFF";
-};
+
+let bullets = [];
+let enemies = [];
+let enemyBullets = [];
+let items = [];
+
+const bgStars = Array.from({length:80},()=>({
+  x:Math.random()*c.width,
+  y:Math.random()*c.height,
+  s:Math.random()*2+1
+}));
 
 /* ================= INPUT ================= */
-const move = e => { 
-  const x = e.touches ? e.touches[0].clientX : e.clientX;
-  const y = e.touches ? e.touches[0].clientY : e.clientY;
-  player.x = x; player.y = y;
-};
+function move(e){
+  const p = e.touches ? e.touches[0] : e;
+  player.x = p.clientX;
+  player.y = p.clientY;
+}
 c.addEventListener("mousemove", move);
-c.addEventListener("touchmove", e => { move(e); e.preventDefault(); }, {passive:false});
+c.addEventListener("touchmove", e=>{
+  move(e);
+  e.preventDefault();
+},{passive:false});
 
-/* ================= LOGIC (2배 난이도) ================= */
-setInterval(() => { 
-  if(!gameRunning) return; 
-  // 메인 총알
-  bullets.push({x:player.x, y:player.y-20, v:12, dmg:20}); 
-  // 파워업 시 보조 총알
-  if(player.power>1) { 
-    bullets.push({x:player.x-15, y:player.y, v:12, dmg:20}); 
-    bullets.push({x:player.x+15, y:player.y, v:12, dmg:20}); 
-  } 
-}, 180);
+/* ================= START ================= */
+document.getElementById("gameStart").onclick = ()=>{
+  document.getElementById("startScreen").style.display="none";
+  gameRunning = true;
+};
 
-setInterval(() => {
+/* ================= SHOOT ================= */
+setInterval(()=>{
   if(!gameRunning) return;
-  const type = Math.random() < 0.3 ? "chaser" : (Math.random() < 0.6 ? "zigzag" : "fast");
-  enemies.push({ x: Math.random()*c.width, y: -30, size: 18, type, hp: 40, speed: type==="fast"?7:3.5, angle: 0 });
-}, 450); // 적 생성 주기 450ms (2배 물량)
+
+  bullets.push({
+    x:player.x,
+    y:player.y-20,
+    v:12,
+    dmg:20
+  });
+
+  if(player.power > 1){
+    bullets.push({x:player.x-15,y:player.y,v:12,dmg:20});
+    bullets.push({x:player.x+15,y:player.y,v:12,dmg:20});
+  }
+},180);
+
+/* ================= ENEMY ================= */
+setInterval(()=>{
+  if(!gameRunning) return;
+  const type = Math.random()<0.3?"chaser":(Math.random()<0.6?"zigzag":"fast");
+  enemies.push({
+    x:Math.random()*c.width,
+    y:-30,
+    size:18,
+    type,
+    hp:40,
+    speed:type==="fast"?7:3.5,
+    angle:0
+  });
+},450);
 
 /* ================= BOSS ================= */
-let boss=null;
-function spawnBoss(){ boss={x:c.width/2, y:100, r:50, maxHp:5000, hp:5000, cd:0}; }
+let boss = null;
+function spawnBoss(){
+  boss = {
+    x:c.width/2,
+    y:100,
+    r:50,
+    hp:5000,
+    cd:0
+  };
+}
 
 /* ================= LOOP ================= */
 function loop(){
-  // 1. 배경
-  ctx.fillStyle = "#000"; ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle = "#fff";
-  bgStars.forEach(s => {
-    s.y += s.s; if(s.y > c.height) s.y = 0;
-    ctx.fillRect(s.x, s.y, s.s, s.s);
-  });
+  try{
 
-  if(!gameRunning) { requestAnimationFrame(loop); return; }
+    /* BACKGROUND */
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,c.width,c.height);
 
-  if(score >= nextBossScore && !boss) { spawnBoss(); nextBossScore += 10000; }
-
-  // 2. 물리 연산
-  if(player.powerTimer > 0) player.powerTimer--; else player.power = 1;
-  if(player.shieldTimer > 0) player.shieldTimer--; else player.shield = 0;
-  if(flashTimer > 0) flashTimer--;
-
-  bullets = bullets.filter(b => {
-    b.y -= b.v;
-    enemies.forEach(e => {
-      if(Math.hypot(b.x-e.x, b.y-e.y) < e.size) { e.hp -= b.dmg; b.y = -100; }
+    ctx.fillStyle="#fff";
+    bgStars.forEach(s=>{
+      s.y += s.s;
+      if(s.y>c.height) s.y=0;
+      ctx.fillRect(s.x,s.y,s.s,s.s);
     });
-    if(boss && Math.hypot(b.x-boss.x, b.y-boss.y) < boss.r) { boss.hp -= b.dmg; b.y = -100; }
-    return b.y > 0;
-  });
 
-  enemies = enemies.filter(e => {
-    if(e.type === "fast") e.y += e.speed;
-    else if(e.type === "chaser") { e.y += e.speed; e.x += (player.x - e.x) * 0.03; }
-    else { e.y += e.speed; e.x += Math.sin(e.angle += 0.1) * 5; }
-
-    if(Math.hypot(e.x-player.x, e.y-player.y) < player.r + e.size) { player.hp -= 10; return false; }
-    if(e.hp <= 0) { score += 100; return false; }
-    return e.y < c.height + 50;
-  });
-
-  if(boss) {
-    boss.x += Math.sin(Date.now()*0.002) * 4; boss.cd--;
-    if(boss.cd <= 0) {
-      for(let i=0; i<10; i++) {
-        let a = i * Math.PI / 5;
-        enemyBullets.push({x:boss.x, y:boss.y, vx:Math.cos(a)*5, vy:Math.sin(a)*5});
-      }
-      boss.cd = 50;
+    if(!gameRunning){
+      requestAnimationFrame(loop);
+      return;
     }
-    if(boss.hp <= 0) { boss=null; score+=3000; }
-  }
 
-  enemyBullets = enemyBullets.filter(eb => {
-    eb.x += eb.vx; eb.y += eb.vy;
-    if(Math.hypot(eb.x-player.x, eb.y-player.y) < player.r) {
-      player.shield > 0 ? player.shield -= 5 : player.hp -= 5;
-      return false;
+    if(score>=nextBossScore && !boss){
+      spawnBoss();
+      nextBossScore += 10000;
     }
-    return eb.y > 0 && eb.y < c.height && eb.x > 0 && eb.x < c.width;
-  });
 
-  items = items.filter(it => {
-    it.y += 3;
-    if(Math.hypot(it.x-player.x, it.y-player.y) < player.r + 15) {
-      if(it.type==="power"){ player.power=2; player.powerTimer=600; }
-      if(it.type==="shield"){ player.shield=100; player.shieldTimer=600; }
-      return false;
-    }
-    return it.y < c.height;
-  });
-  if(Math.random() < 0.005) items.push({x:Math.random()*c.width, y:-20, type: Math.random()<0.5?"power":"shield"});
-
-  // 3. 그리기 (Canvas 도형)
-  if(flashTimer > 0) { ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(0,0,c.width,c.height); }
-
-  // Player (비행기 모양)
-  ctx.save();
-  ctx.translate(player.x, player.y);
-  ctx.fillStyle = "#0af";
-  ctx.beginPath();
-  ctx.moveTo(0, -20); ctx.lineTo(-15, 10); ctx.lineTo(0, 5); ctx.lineTo(15, 10);
-  ctx.closePath(); ctx.fill();
-  if(player.shield > 0) {
-    ctx.strokeStyle="#0ff"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.stroke();
-  }
-  ctx.restore();
-
-  // 적 (붉은 삼각형)
-  enemies.forEach(e => {
-    ctx.fillStyle = e.type === "chaser" ? "#f0f" : (e.type === "fast" ? "#ff0" : "#f33");
-    ctx.beginPath();
-    ctx.moveTo(e.x, e.y+e.size); ctx.lineTo(e.x-e.size, e.y-e.size); ctx.lineTo(e.x+e.size, e.y-e.size);
-    ctx.closePath(); ctx.fill();
-  });
-
-  // 보스 (기함 모양)
-  if(boss) {
-    ctx.fillStyle = "#f00";
-    ctx.beginPath();
-    ctx.moveTo(boss.x, boss.y+boss.r); ctx.lineTo(boss.x-boss.r, boss.y-boss.r);
-    ctx.lineTo(boss.x+boss.r, boss.y-boss.r); ctx.closePath(); ctx.fill();
-    // 보스 HP 바
-    ctx.fillStyle="#400"; ctx.fillRect(20,20,c.width-40,10);
-    ctx.fillStyle="#f00"; ctx.fillRect(20,20,(c.width-40)*(boss.hp/5000),10);
-  }
-
-  // 총알 및 아이템
-  ctx.fillStyle="#fff"; bullets.forEach(b=>ctx.fillRect(b.x-2, b.y, 4, 15));
-  ctx.fillStyle="#f00"; enemyBullets.forEach(eb=>{ctx.beginPath();ctx.arc(eb.x,eb.y,
+    /* BULLETS */
+    bullets = bullets.filter(b=>{
+      b.y -= b.v;
+      enemies.forEach(e=>{
+        if(Math.hypot(b.x-e.x,b.y-e.y)<e.size){
+          e.hp -= b.dmg;
+          b.y = -999;
+        }
+      });
+      if(boss && Math.hypot(b.x-boss.x,b.y-boss.y)<boss.r){
+        boss.hp -
