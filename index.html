@@ -1,301 +1,278 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MARS FUTURE AI</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>MARS FUTURE AI - TEST</title>
 
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
-canvas{display:block}
-
-#menu{
-  position:fixed;inset:0;background:#000;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  z-index:10
-}
-#title{
-  position:absolute;top:60px;
-  text-align:center;
-  font-size:64px;
-  font-family:Orbitron,sans-serif;
-  color:#6b0000;
-  text-shadow:0 0 20px #300
-}
-#startBtn{
-  font-family:'Press Start 2P',monospace;
-  font-size:24px;
-  color:#fff;border:3px solid #fff;
-  padding:20px 40px;cursor:pointer
-}
-#startBtn:hover{animation:blink .15s infinite}
-@keyframes blink{50%{opacity:.3}}
-
-#hud{
-  position:fixed;top:10px;left:10px;
-  font-family:monospace;font-size:13px;
-  color:#0ff;background:rgba(0,0,0,.5);
-  padding:8px;border-radius:4px
-}
-#psycheHud,#aiHud{font-size:11px;opacity:.6}
-
-#bossBarWrap{
-  position:fixed;top:20px;left:50%;
-  transform:translateX(-50%);
-  width:60%;height:18px;
-  border:2px solid #900;
-  background:rgba(0,0,0,.6);
-  display:none;z-index:5
-}
-#bossBar{
-  height:100%;width:100%;
-  background:linear-gradient(to right,#ff4444,#b00000);
-}
-#bossBar.hit{animation:hitFlash .15s}
-@keyframes hitFlash{
-  50%{filter:brightness(2)}
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #050505;
 }
 
-#warning{
-  position:fixed;inset:0;
-  display:none;align-items:center;justify-content:center;
-  font-size:64px;color:#f00;
-  background:rgba(0,0,0,.7);
-  animation:blink .2s infinite;
-  z-index:20
-}
-
-#report{
-  position:fixed;inset:0;
-  display:none;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.85);z-index:30
-}
-#reportBox{
-  color:#fff;font-family:monospace;
-  max-width:500px;line-height:1.8
+canvas {
+  display: block;
+  touch-action: none;
 }
 </style>
 </head>
 
 <body>
-
-<div id="menu">
-  <div id="title">MARS<br>FUTURE<br>AI</div>
-  <div id="startBtn">GAME START</div>
-</div>
-
-<div id="hud">
-  SCORE <span id="score">0</span><br>
-  HP <span id="hp">100</span><br>
-  <div id="psycheHud">STATE : ---</div>
-  <div id="aiHud">AI ADAPT : 0%</div>
-</div>
-
-<div id="bossBarWrap"><div id="bossBar"></div></div>
-<div id="warning">WARNING</div>
-
-<div id="report"><div id="reportBox"></div></div>
-<canvas id="c"></canvas>
+<canvas id="game"></canvas>
 
 <script>
-const c=document.getElementById('c'),ctx=c.getContext('2d');
-function resize(){c.width=innerWidth;c.height=innerHeight}
-resize();addEventListener('resize',resize);
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const IMG={},keys=[
- 'bg_mars1','bg_mars2','player',
- 'enemy_straight','enemy_zigzag','enemy_sniper',
- 'boss1','boss2','boss3',
- 'item_bullets','item_shield','item_bomb'
-];
-keys.forEach(k=>{IMG[k]=new Image();IMG[k].src='assets/'+k+'.png'});
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
 
-let game=false;
-document.getElementById('startBtn').onclick=()=>{
-  document.getElementById('menu').style.display='none';
-  game=true;
+/* =========================
+   GAME STATE
+========================= */
+let score = 0;
+let gameTime = 0;
+
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height * 0.8,
+  size: 18,
+  hp: 100
 };
 
-let score=0,hp=100,aiAdapt=0,bossCount=0;
-let bullets=[],enemies=[],bossBullets=[],items=[];
-let boss=null,inIntro=false,introTimer=0;
+let bullets = [];
+let enemies = [];
+let enemyBullets = [];
+let boss = null;
 
-const player={x:0,y:0,power:1,shield:0,shieldT:0};
-const psyche={move:0,shoot:0,near:0};
-let state='BALANCED',stateT=0;
+/* =========================
+   INPUT (MOBILE)
+========================= */
+let touchX = null;
+let touchY = null;
 
-function analyze(){
-  if(psyche.shoot>psyche.move*2) return 'AGGRESSIVE';
-  if(psyche.move>psyche.shoot*2) return 'PANIC';
-  if(psyche.near<3) return 'TUNNEL';
-  return 'BALANCED';
-}
-
-addEventListener('mousemove',e=>{
-  player.x=e.clientX;player.y=e.clientY;
-  psyche.move++;
+canvas.addEventListener("touchstart", e => {
+  const t = e.touches[0];
+  touchX = t.clientX;
+  touchY = t.clientY;
 });
 
-let bgY=0,bgI=0;
-function drawBG(){
-  bgY+=1.5;
-  if(bgY>c.height){bgY=0;bgI^=1}
-  ctx.drawImage(IMG['bg_mars'+(bgI+1)],0,bgY-c.height,c.width,c.height);
-  ctx.drawImage(IMG['bg_mars'+(bgI+2)],0,bgY,c.width,c.height);
-}
+canvas.addEventListener("touchmove", e => {
+  const t = e.touches[0];
+  touchX = t.clientX;
+  touchY = t.clientY;
+  e.preventDefault();
+}, { passive: false });
 
-function calcBossHP(){
-  if(bossCount===0) return 5000;
-  let v=5000+Math.min(score/2,3000);
-  if(state==='AGGRESSIVE')v+=1500;
-  if(state==='BALANCED')v+=800;
-  return Math.min(v,10000);
-}
+canvas.addEventListener("touchend", () => {
+  touchX = null;
+  touchY = null;
+});
 
-function spawnBoss(){
-  bossCount++;
-  const hpv=calcBossHP();
-  boss={
-    x:c.width/2,y:140,
-    hp:hpv,maxHp:hpv,
-    img:IMG['boss'+(1+Math.floor(Math.random()*3))],
-    atk:0,phase:1,flash:0,evade:0
+/* =========================
+   PLAYER BULLET
+========================= */
+setInterval(() => {
+  bullets.push({
+    x: player.x,
+    y: player.y,
+    r: 4,
+    dmg: 20
+  });
+}, 200);
+
+/* =========================
+   ENEMY SPAWN
+========================= */
+setInterval(() => {
+  if (!boss) {
+    enemies.push({
+      x: Math.random() * canvas.width,
+      y: -30,
+      size: 16,
+      hp: 40,
+      speed: 2 + score * 0.002
+    });
+  }
+}, 800);
+
+/* =========================
+   BOSS SPAWN
+========================= */
+function spawnBoss() {
+  boss = {
+    x: canvas.width / 2,
+    y: 120,
+    r: 50,
+    maxHp: 5000 + Math.min(score * 5, 5000),
+    hp: 5000 + Math.min(score * 5, 5000),
+    phase: 1,
+    cooldown: 0
   };
-  document.getElementById('bossBarWrap').style.display='block';
 }
 
-function bossAttack(d){
-  boss.atk+=d;
-  const rate=Math.max(180,(boss.phase===1?800:450)-aiAdapt*4);
-  if(boss.atk<rate)return;
-  boss.atk=0;
+setInterval(() => {
+  if (!boss && score > 1000) spawnBoss();
+}, 2000);
 
-  if(boss.phase===2){
-    for(let a=-3;a<=3;a++)
-      bossBullets.push({x:boss.x,y:boss.y,vx:a*1.6,vy:4.5});
-  }else{
-    for(let a=-1;a<=1;a++)
-      bossBullets.push({x:boss.x,y:boss.y,vx:a*2,vy:4});
-  }
-}
+/* =========================
+   GAME LOOP
+========================= */
+function update() {
+  gameTime++;
 
-function report(){
-  document.getElementById('reportBox').innerHTML=
-  `<h2>AI ANALYSIS</h2>
-   <p>Score : ${score}</p>
-   <p>State : ${state}</p>
-   <p>The AI adapted to you.</p>
-   <p>F5 to retry</p>`;
-  document.getElementById('report').style.display='flex';
-}
-
-let last=0;
-function loop(t){
-  requestAnimationFrame(loop);
-  if(!game)return;
-  const d=t-last;last=t;
-  ctx.clearRect(0,0,c.width,c.height);
-  drawBG();
-
-  aiAdapt=Math.min(100,aiAdapt+d*0.002);
-  stateT+=d;
-  if(stateT>1500){
-    stateT=0;
-    state=analyze();
-    psyche.near=0;
-    document.getElementById('psycheHud').innerText='STATE : '+state;
-  }
-  document.getElementById('aiHud').innerText='AI ADAPT : '+Math.floor(aiAdapt)+'%';
-
-  if(!boss&&!inIntro&&score>2000){
-    inIntro=true;introTimer=2500;
-    document.getElementById('warning').style.display='flex';
-  }
-  if(inIntro){
-    introTimer-=d;
-    if(introTimer<=0){
-      inIntro=false;
-      document.getElementById('warning').style.display='none';
-      spawnBoss();
-    }
-    return;
+  /* Player move */
+  if (touchX !== null) {
+    player.x += (touchX - player.x) * 0.15;
+    player.y += (touchY - player.y) * 0.15;
   }
 
-  if(!boss&&Math.random()<0.03)
-    enemies.push({x:Math.random()*c.width,y:-40,t:Math.random()<.7?'enemy_straight':Math.random()<.5?'enemy_zigzag':'enemy_sniper',tick:0});
-
-  if(Math.random()<0.15){
-    for(let i=0;i<player.power;i++)
-      bullets.push({x:player.x+(i-(player.power-1)/2)*12,y:player.y});
-    psyche.shoot++;
-  }
-
-  bullets=bullets.filter(b=>{
-    b.y-=12;
-    ctx.fillStyle='#0ff';
-    ctx.fillRect(b.x-2,b.y-8,4,8);
-    return b.y>-20;
+  /* Bullets */
+  bullets = bullets.filter(b => {
+    b.y -= 10;
+    return b.y > 0;
   });
 
-  enemies=enemies.filter(e=>{
-    e.tick++; e.y+=3;
-    if(e.t==='enemy_zigzag') e.x+=Math.sin(e.tick*.1)*4;
-    ctx.drawImage(IMG[e.t],e.x-24,e.y-24,48,48);
-    for(let i=bullets.length-1;i>=0;i--){
-      if(Math.hypot(bullets[i].x-e.x,bullets[i].y-e.y)<26){
-        bullets.splice(i,1);
-        score+=100;
-        return false;
+  /* Enemies */
+  enemies = enemies.filter(e => {
+    e.y += e.speed;
+
+    bullets.forEach((b, i) => {
+      if (Math.hypot(b.x - e.x, b.y - e.y) < e.size) {
+        e.hp -= b.dmg;
+        bullets.splice(i, 1);
       }
-    }
-    return e.y<c.height+40;
-  });
+    });
 
-  if(boss){
-    if(boss.hp<=boss.maxHp*.5&&boss.phase===1)boss.phase=2;
-    bossAttack(d);
-    boss.flash=Math.max(0,boss.flash-d);
-    ctx.globalAlpha=boss.flash>0?0.4:1;
-    ctx.drawImage(boss.img,boss.x-96,boss.y-64,192,128);
-    ctx.globalAlpha=1;
-
-    for(let i=bullets.length-1;i>=0;i--){
-      if(Math.hypot(bullets[i].x-boss.x,bullets[i].y-boss.y)<80){
-        bullets.splice(i,1);
-        boss.hp-=20;
-        boss.flash=100;
-        score+=50;
-        const r=boss.hp/boss.maxHp;
-        document.getElementById('bossBar').style.width=(r*100)+'%';
-        document.getElementById('bossBar').classList.remove('hit');
-        void document.getElementById('bossBar').offsetWidth;
-        document.getElementById('bossBar').classList.add('hit');
-        if(boss.hp<=0){
-          boss=null;bossBullets.length=0;
-          document.getElementById('bossBarWrap').style.display='none';
-        }
-      }
-    }
-  }
-
-  bossBullets=bossBullets.filter(b=>{
-    b.x+=b.vx;b.y+=b.vy;
-    ctx.fillStyle='red';
-    ctx.fillRect(b.x-3,b.y-3,6,6);
-    if(Math.hypot(b.x-player.x,b.y-player.y)<20){
-      hp-=20;
-      if(hp<=0){report();game=false;}
+    if (e.hp <= 0) {
+      score += 100;
       return false;
     }
-    return b.x>-20&&b.x<c.width+20&&b.y>-20&&b.y<c.height+20;
+
+    return e.y < canvas.height;
   });
 
-  ctx.drawImage(IMG.player,player.x-32,player.y-32,64,64);
-  document.getElementById('score').innerText=score;
-  document.getElementById('hp').innerText=hp;
+  /* Boss logic */
+  if (boss) {
+    if (boss.hp < boss.maxHp * 0.5) boss.phase = 2;
+
+    // simple evade
+    boss.x += Math.sin(gameTime * 0.05) * (boss.phase === 2 ? 4 : 2);
+
+    boss.cooldown--;
+    if (boss.cooldown <= 0) {
+      const angleStep = boss.phase === 2 ? 20 : 40;
+      for (let a = 0; a < 360; a += angleStep) {
+        const rad = a * Math.PI / 180;
+        enemyBullets.push({
+          x: boss.x,
+          y: boss.y,
+          vx: Math.cos(rad) * 3,
+          vy: Math.sin(rad) * 3
+        });
+      }
+      boss.cooldown = boss.phase === 2 ? 40 : 80;
+    }
+
+    bullets.forEach((b, i) => {
+      if (Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r) {
+        boss.hp -= b.dmg;
+        bullets.splice(i, 1);
+      }
+    });
+
+    if (boss.hp <= 0) {
+      boss = null;
+      score += 2000;
+    }
+  }
+
+  /* Enemy bullets */
+  enemyBullets = enemyBullets.filter(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+
+    if (Math.hypot(b.x - player.x, b.y - player.y) < player.size) {
+      player.hp -= 10;
+      return false;
+    }
+
+    return b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height;
+  });
 }
-requestAnimationFrame(loop);
+
+/* =========================
+   DRAW
+========================= */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Player
+  ctx.fillStyle = "#4af";
+  ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+
+  // Bullets
+  ctx.fillStyle = "#fff";
+  bullets.forEach(b => {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Enemies
+  ctx.fillStyle = "#f44";
+  enemies.forEach(e => {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Boss
+  if (boss) {
+    ctx.fillStyle = boss.phase === 2 ? "#ff0" : "#f0f";
+    ctx.beginPath();
+    ctx.arc(boss.x, boss.y, boss.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Boss HP bar
+    ctx.fillStyle = "#400";
+    ctx.fillRect(20, 20, canvas.width - 40, 10);
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(20, 20, (canvas.width - 40) * (boss.hp / boss.maxHp), 10);
+  }
+
+  // Enemy bullets
+  ctx.fillStyle = "#fa0";
+  enemyBullets.forEach(b => {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // UI
+  ctx.fillStyle = "#fff";
+  ctx.font = "14px monospace";
+  ctx.fillText("SCORE: " + score, 20, canvas.height - 20);
+  ctx.fillText("HP: " + player.hp, canvas.width - 100, canvas.height - 20);
+}
+
+/* =========================
+   LOOP
+========================= */
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
 </script>
 </body>
 </html>
