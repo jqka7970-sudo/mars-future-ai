@@ -1,208 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>MARS FUTURE AI</title>
+    <meta charset="UTF-8">
+    <title>MARS FUTURE AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mars-red: #ff4d4d;
+            --deep-space: #1a0a0a;
+        }
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&display=swap');
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #4a1a1a 0%, #000 100%);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: black;
-  font-family: 'Orbitron', sans-serif;
-  overflow: hidden;
-  color: #ff2b2b;
-}
+        /* 화성 느낌 배경 레이어 */
+        .mars-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/asfalt-dark.png');
+            opacity: 0.3;
+            z-index: -1;
+        }
 
-#startScreen {
-  position: absolute;
-  inset: 0;
-  background: url("https://images.unsplash.com/photo-1580428180131-08c9c6e5b434")
-              center/cover no-repeat;
-  filter: hue-rotate(-20deg) brightness(0.6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+        #ui-layer {
+            text-align: center;
+            z-index: 10;
+        }
 
-header {
-  margin-top: 40px;
-  display: flex;
-  gap: 40px;
-  font-size: 32px;
-  letter-spacing: 4px;
-}
+        h1 {
+            font-size: 5rem;
+            color: var(--mars-red);
+            text-shadow: 0 0 20px rgba(255, 77, 77, 0.7);
+            margin-bottom: 50px;
+            letter-spacing: 15px;
+        }
 
-#startBtn {
-  margin-top: auto;
-  margin-bottom: 20px;
-  font-size: 28px;
-  padding: 20px 60px;
-  background: transparent;
-  border: 2px solid #ff2b2b;
-  color: #ff2b2b;
-  cursor: pointer;
-  animation: blink 1.2s infinite;
-}
+        /* 스타트 게임 버튼 및 깜빡이 효과 */
+        #start-btn {
+            padding: 20px 50px;
+            font-size: 1.5rem;
+            font-family: 'Orbitron', sans-serif;
+            background: transparent;
+            color: white;
+            border: 2px solid var(--mars-red);
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
 
-#startBtn:hover {
-  box-shadow: 0 0 20px #ff2b2b;
-}
+        #start-btn:hover {
+            animation: blink 0.1s infinite;
+            background: var(--mars-red);
+            color: black;
+            box-shadow: 0 0 30px var(--mars-red);
+        }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
 
-#audioBtn {
-  margin-bottom: 60px;
-  background: none;
-  border: 1px solid #ff2b2b;
-  color: #ff2b2b;
-  padding: 8px 16px;
-  cursor: pointer;
-}
+        #sound-ctrl {
+            margin-top: 20px;
+            display: block;
+            color: #888;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
 
-canvas {
-  display: none;
-  margin: auto;
-  background: #100000;
-}
-</style>
+        /* 게임 캔버스 */
+        #gameCanvas {
+            display: none;
+            background: #000;
+            border: 2px solid var(--mars-red);
+        }
+    </style>
 </head>
-
 <body>
 
-<div id="startScreen">
-  <header>
-    <span>MARS</span>
-    <span>FUTURE</span>
-    <span>AI</span>
-  </header>
+<div class="mars-bg"></div>
 
-  <button id="startBtn">START GAME</button>
-  <button id="audioBtn">🔊 MARS.mp3</button>
+<div id="ui-layer">
+    <h1>MARS<br>FUTURE<br>AI</h1>
+    <button id="start-btn">START GAME</button>
+    <button id="sound-ctrl">SOUND: OFF</button>
 </div>
 
-<canvas id="game" width="480" height="640"></canvas>
-
-<audio id="bgm" src="mars.mp3" loop></audio>
+<canvas id="gameCanvas"></canvas>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+    const startBtn = document.getElementById('start-btn');
+    const uiLayer = document.getElementById('ui-layer');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const soundBtn = document.getElementById('sound-ctrl');
 
-const startScreen = document.getElementById("startScreen");
-const startBtn = document.getElementById("startBtn");
-const audioBtn = document.getElementById("audioBtn");
-const bgm = document.getElementById("bgm");
+    // 사운드 설정 (가상의 파일 설정)
+    let soundOn = false;
+    const bgm = new Audio('mars.mp3'); 
+    bgm.loop = true;
 
-let playing = false;
-let audioOn = false;
+    soundBtn.onclick = () => {
+        soundOn = !soundOn;
+        soundBtn.innerText = `SOUND: ${soundOn ? 'ON' : 'OFF'}`;
+        if(soundOn) bgm.play().catch(e => console.log("Audio play blocked."));
+        else bgm.pause();
+    };
 
-audioBtn.onclick = () => {
-  audioOn ? bgm.pause() : bgm.play();
-  audioBtn.textContent = audioOn ? "🔊 MARS.mp3" : "🔇 MARS.mp3";
-  audioOn = !audioOn;
-};
+    // 게임 시작 시퀀스
+    startBtn.onclick = () => {
+        uiLayer.style.display = 'none';
+        canvas.style.display = 'block';
+        resizeCanvas();
+        initGame();
+    };
 
-startBtn.onclick = () => {
-  startScreen.style.display = "none";
-  canvas.style.display = "block";
-  playing = true;
-  loop();
-};
-
-const player = {
-  x: 240,
-  y: 560,
-  r: 6,
-  speed: 4
-};
-
-const bullets = [];
-const enemies = [];
-const enemyBullets = [];
-
-document.addEventListener("mousemove", e => {
-  const rect = canvas.getBoundingClientRect();
-  player.x = e.clientX - rect.left;
-  player.y = e.clientY - rect.top;
-});
-
-function shoot() {
-  bullets.push({ x: player.x, y: player.y, v: -6 });
-}
-
-setInterval(shoot, 200);
-
-function spawnEnemy() {
-  enemies.push({
-    x: Math.random() * 440 + 20,
-    y: -20,
-    r: 10,
-    t: 0
-  });
-}
-
-setInterval(spawnEnemy, 800);
-
-function update() {
-  bullets.forEach(b => b.y += b.v);
-  enemies.forEach(e => {
-    e.y += 1.2;
-    e.t++;
-    if (e.t % 40 === 0) {
-      for (let i = 0; i < 8; i++) {
-        const a = (Math.PI * 2 / 8) * i;
-        enemyBullets.push({
-          x: e.x,
-          y: e.y,
-          vx: Math.cos(a) * 2,
-          vy: Math.sin(a) * 2
-        });
-      }
+    function resizeCanvas() {
+        canvas.width = 600;
+        canvas.height = 800;
     }
-  });
 
-  enemyBullets.forEach(b => {
-    b.x += b.vx;
-    b.y += b.vy;
-  });
-}
+    // 간단한 탄막 슈팅 엔진
+    let player = { x: 300, y: 700, size: 20 };
+    let bullets = [];
+    let enemies = [];
+    let enemyBullets = [];
+    let frame = 0;
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function initGame() {
+        requestAnimationFrame(gameLoop);
+    }
 
-  ctx.fillStyle = "#ff2b2b";
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-  ctx.fill();
+    window.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        player.x = e.clientX - rect.left;
+        player.y = e.clientY - rect.top;
+    };
 
-  bullets.forEach(b => {
-    ctx.fillRect(b.x - 1, b.y - 6, 2, 6);
-  });
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        frame++;
 
-  enemies.forEach(e => {
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
+        // 플레이어 (AI 코어 느낌)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.size/2, 0, Math.PI*2);
+        ctx.fill();
 
-  enemyBullets.forEach(b => {
-    ctx.fillRect(b.x, b.y, 3, 3);
-  });
-}
+        // 플레이어 탄환 생성
+        if(frame % 5 === 0) {
+            bullets.push({x: player.x, y: player.y - 20});
+        }
 
-function loop() {
-  if (!playing) return;
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
+        // 플레이어 탄환 이동 및 그리기
+        bullets.forEach((b, i) => {
+            b.y -= 10;
+            ctx.fillStyle = '#0ff';
+            ctx.fillRect(b.x-2, b.y, 4, 10);
+            if(b.y < 0) bullets.splice(i, 1);
+        });
+
+        // 적군(MARS 위협) 생성
+        if(frame % 60 === 0) {
+            enemies.push({x: Math.random() * canvas.width, y: -50, hp: 3});
+        }
+
+        // 적군 및 탄막 로직
+        enemies.forEach((en, i) => {
+            en.y += 2;
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillRect(en.x - 20, en.y, 40, 40);
+
+            // 적 탄막 생성
+            if(frame % 40 === 0) {
+                for(let a=0; a<Math.PI*2; a+=Math.PI/4) {
+                    enemyBullets.push({x: en.x, y: en.y, vx: Math.cos(a)*3, vy: Math.sin(a)*3});
+                }
+            }
+            if(en.y > canvas.height) enemies.splice(i, 1);
+        });
+
+        // 적 탄막 이동 및 그리기
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx;
+            eb.y += eb.vy;
+            ctx.fillStyle = '#f0f';
+            ctx.beginPath();
+            ctx.arc(eb.x, eb.y, 4, 0, Math.PI*2);
+            ctx.fill();
+
+            // 충돌 감지 (간단히)
+            let dist = Math.hypot(eb.x - player.x, eb.y - player.y);
+            if(dist < 10) {
+                // 게임 오버 연출 생략 (재시작 기능 등 확장 가능)
+            }
+
+            if(eb.y > canvas.height || eb.y < -100) enemyBullets.splice(i, 1);
+        });
+
+        requestAnimationFrame(gameLoop);
+    }
 </script>
 
 </body>
